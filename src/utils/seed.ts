@@ -1,0 +1,32 @@
+import { Permission } from '@/models/Permission.js'
+import { DEFAULT_PERMISSIONS } from '@/constants/index.js'
+
+/**
+ * Garante que a tabela de permissões existe com os valores padrão.
+ * Executado na inicialização do servidor.
+ * Usa upsert — não sobrescreve permissões já customizadas pelo admin.
+ */
+export const seedPermissions = async (): Promise<void> => {
+  try {
+    const count = await Permission.countDocuments()
+
+    if (count === DEFAULT_PERMISSIONS.length) {
+      console.log('✅ Permissões já inicializadas')
+      return
+    }
+
+    await Promise.all(
+      DEFAULT_PERMISSIONS.map(({ role, resource, actions }) =>
+        Permission.updateOne(
+          { role, resource },
+          { $setOnInsert: { role, resource, actions } },
+          { upsert: true },
+        ),
+      ),
+    )
+
+    console.log('✅ Permissões padrão criadas')
+  } catch (err) {
+    console.error('❌ Erro ao inicializar permissões:', err)
+  }
+}
