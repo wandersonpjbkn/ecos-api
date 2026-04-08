@@ -37,10 +37,10 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
-app.use('/auth',        authRoutes)
-app.use('/books',       bookRoutes)
-app.use('/users',       userRoutes)
-app.use('/subgeneros',  subgeneroRoutes)
+app.use('/auth', authRoutes)
+app.use('/books', bookRoutes)
+app.use('/users', userRoutes)
+app.use('/subgeneros', subgeneroRoutes)
 app.use('/permissions', permissionRoutes)
 
 // ── 404 ───────────────────────────────────────────────────────────

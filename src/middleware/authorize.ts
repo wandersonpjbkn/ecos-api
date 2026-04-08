@@ -41,11 +41,7 @@ export const authorize =
  * Middleware exclusivo para rotas de admin.
  * Bypassa a tabela de permissões — só verifica o role.
  */
-export const adminOnly = (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction,
-): void => {
+export const adminOnly = (req: AuthRequest, res: Response, next: NextFunction): void => {
   if (req.user?.role !== 'admin') {
     res.status(403).json({ error: 'Acesso restrito a administradores.' })
     return

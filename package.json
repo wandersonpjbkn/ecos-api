@@ -8,14 +8,17 @@
     "build": "tsc && tsc-alias",
     "start": "node dist/server.js",
     "lint": "eslint src --fix",
-    "ts": "tsc --noEmit"
+    "ts": "tsc --noEmit",
+    "migrate": "tsx -r tsconfig-paths/register src/scripts/migrate.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",
+    "csv-parse": "^5.5.6",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
+    "jwks-rsa": "^4.0.1",
     "mongoose": "^8.4.0"
   },
   "devDependencies": {

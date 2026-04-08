@@ -9,8 +9,8 @@ export interface ISubgenero {
 
 const SubgeneroSchema = new Schema<ISubgenero>(
   {
-    nome:       { type: String, required: true, unique: true },
-    slug:       { type: String, required: true, unique: true },
+    nome: { type: String, required: true, unique: true },
+    slug: { type: String, required: true, unique: true },
     created_by: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   },
   {

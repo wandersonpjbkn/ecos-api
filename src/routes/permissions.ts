@@ -31,7 +31,7 @@ router.put('/:role/:resource', async (req: AuthRequest, res: Response) => {
     const { actions } = req.body
 
     // Validações
-    if (!['admin', 'editor', 'viewer'].includes(role)) {
+    if (!['admin', 'editor', 'viewer'].includes(role as string)) {
       res.status(400).json({ error: 'role inválido.' })
       return
     }

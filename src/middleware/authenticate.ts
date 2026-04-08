@@ -1,9 +1,28 @@
 import type { Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
+import jwksClient from 'jwks-rsa'
 
 import { User } from '@/models/User.js'
 import type { AuthRequest, SupabaseJwtPayload } from '@/types/index.ts'
 
+// ── JWKS client (singleton) ───────────────────────────────────────
+// Busca a chave pública do Supabase via endpoint JWKS e faz cache
+const client = jwksClient({
+  jwksUri: `${process.env.SUPABASE_URL}/auth/v1/.well-known/jwks.json`,
+  cache: true,
+  cacheMaxEntries: 5,
+  cacheMaxAge: 10 * 60 * 1000, // 10 min
+})
+
+const getSigningKey = (kid: string): Promise<string> =>
+  new Promise((resolve, reject) => {
+    client.getSigningKey(kid, (err, key) => {
+      if (err || !key) return reject(err ?? new Error('Chave não encontrada'))
+      resolve(key.getPublicKey())
+    })
+  })
+
+// ── Middleware ────────────────────────────────────────────────────
 export const authenticate = async (
   req: AuthRequest,
   res: Response,
@@ -17,10 +36,9 @@ export const authenticate = async (
   }
 
   const token = authHeader.slice(7)
-  const secret = process.env.SUPABASE_JWT_SECRET
 
-  if (!secret) {
-    console.error('[authenticate] SUPABASE_JWT_SECRET não definida')
+  if (!process.env.SUPABASE_URL) {
+    console.error('[authenticate] SUPABASE_URL não definida')
     res.status(500).json({ error: 'Erro de configuração do servidor.' })
     return
   }
@@ -28,29 +46,40 @@ export const authenticate = async (
   let payload: SupabaseJwtPayload
 
   try {
-    payload = jwt.verify(token, secret) as SupabaseJwtPayload
-  } catch {
+    // Decodifica o header do JWT para obter o kid (key ID)
+    const decoded = jwt.decode(token, { complete: true })
+    if (!decoded || typeof decoded === 'string') throw new Error('Token malformado')
+
+    const kid = decoded.header.kid as string | undefined
+
+    // Busca a chave pública correspondente no JWKS do Supabase
+    const publicKey = await getSigningKey(kid ?? '')
+
+    payload = jwt.verify(token, publicKey, {
+      algorithms: ['ES256'],
+    }) as SupabaseJwtPayload
+  } catch (err) {
+    console.error('[authenticate] Falha na verificação do token:', err)
     res.status(401).json({ error: 'Token inválido ou expirado.' })
     return
   }
 
   try {
-    // Busca ou cria o usuário no MongoDB
     let user = await User.findOne({ supabase_uid: payload.sub })
 
     if (!user) {
-      // Primeiro acesso — cria como viewer
       user = await User.create({
         supabase_uid: payload.sub,
         email: payload.email,
-        name: payload.email.split('@')[0], // nome provisório até o usuário editar
+        name: payload.email.split('@')[0],
         role: 'viewer',
         last_seen_at: new Date(),
       })
       console.log(`[authenticate] Novo usuário criado: ${user.email} (viewer)`)
     } else {
-      // Atualiza last_seen sem await para não bloquear a request
-      User.updateOne({ _id: user._id }, { last_seen_at: new Date() }).exec().catch(() => null)
+      User.updateOne({ _id: user._id }, { last_seen_at: new Date() })
+        .exec()
+        .catch(() => null)
     }
 
     req.user = {

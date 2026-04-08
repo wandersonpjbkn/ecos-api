@@ -9,9 +9,13 @@ export interface IPermission {
 
 const PermissionSchema = new Schema<IPermission>(
   {
-    role:     { type: String, enum: ['admin', 'editor', 'viewer'], required: true },
-    resource: { type: String, enum: ['books', 'users', 'subgeneros', 'permissions'], required: true },
-    actions:  [{ type: String, enum: ['create', 'read', 'update', 'delete'] }],
+    role: { type: String, enum: ['admin', 'editor', 'viewer'], required: true },
+    resource: {
+      type: String,
+      enum: ['books', 'users', 'subgeneros', 'permissions'],
+      required: true,
+    },
+    actions: [{ type: String, enum: ['create', 'read', 'update', 'delete'] }],
   },
   { timestamps: false },
 )

@@ -10,7 +10,7 @@ export type Action = 'create' | 'read' | 'update' | 'delete'
 
 /** Payload decodificado do JWT emitido pelo Supabase */
 export interface SupabaseJwtPayload {
-  sub: string     // supabase_uid
+  sub: string // supabase_uid
   email: string
   exp: number
   iat: number

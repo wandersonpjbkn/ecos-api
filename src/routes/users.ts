@@ -15,10 +15,7 @@ router.use(authenticate)
 // Lista todos os membros — admin e editor podem ver
 router.get('/', authorize('users', 'read'), async (_req, res: Response) => {
   try {
-    const users = await User.find()
-      .select('-supabase_uid')
-      .sort({ created_at: -1 })
-      .lean()
+    const users = await User.find().select('-supabase_uid').sort({ created_at: -1 }).lean()
 
     res.json(users)
   } catch (err) {

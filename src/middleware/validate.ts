@@ -6,17 +6,25 @@ const isObjectId = (v: unknown): boolean => typeof v === 'string' && /^[a-f\d]{2
 
 // ── Books ─────────────────────────────────────────────────────────
 
-export const validateCreateBook = (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction,
-): void => {
+export const validateCreateBook = (req: AuthRequest, res: Response, next: NextFunction): void => {
   const { titulo, autor, categoria, midia, quem_nome } = req.body
 
-  if (!isString(titulo))     { res.status(400).json({ error: 'titulo é obrigatório.' }); return }
-  if (!isString(autor))      { res.status(400).json({ error: 'autor é obrigatório.' }); return }
-  if (!isString(categoria))  { res.status(400).json({ error: 'categoria é obrigatória.' }); return }
-  if (!isString(quem_nome))  { res.status(400).json({ error: 'quem_nome é obrigatório.' }); return }
+  if (!isString(titulo)) {
+    res.status(400).json({ error: 'titulo é obrigatório.' })
+    return
+  }
+  if (!isString(autor)) {
+    res.status(400).json({ error: 'autor é obrigatório.' })
+    return
+  }
+  if (!isString(categoria)) {
+    res.status(400).json({ error: 'categoria é obrigatória.' })
+    return
+  }
+  if (!isString(quem_nome)) {
+    res.status(400).json({ error: 'quem_nome é obrigatório.' })
+    return
+  }
   if (!['Livro', 'Mangá', 'HQ'].includes(midia)) {
     res.status(400).json({ error: 'midia deve ser Livro, Mangá ou HQ.' })
     return
@@ -25,12 +33,17 @@ export const validateCreateBook = (
   next()
 }
 
-export const validateUpdateBook = (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction,
-): void => {
-  const allowed = ['titulo', 'autor', 'categoria', 'midia', 'subgeneros', 'quem_nome', 'porque', 'isbn']
+export const validateUpdateBook = (req: AuthRequest, res: Response, next: NextFunction): void => {
+  const allowed = [
+    'titulo',
+    'autor',
+    'categoria',
+    'midia',
+    'subgeneros',
+    'quem_nome',
+    'porque',
+    'isbn',
+  ]
   const keys = Object.keys(req.body)
 
   const unknown = keys.filter((k) => !allowed.includes(k))
@@ -49,11 +62,7 @@ export const validateUpdateBook = (
 
 // ── Users ─────────────────────────────────────────────────────────
 
-export const validateUpdateRole = (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction,
-): void => {
+export const validateUpdateRole = (req: AuthRequest, res: Response, next: NextFunction): void => {
   const { role } = req.body
 
   if (!['admin', 'editor', 'viewer'].includes(role)) {
@@ -88,7 +97,8 @@ export const validateCreateSubgenero = (
 
 // ── Params ────────────────────────────────────────────────────────
 
-export const validateObjectId = (param: string) =>
+export const validateObjectId =
+  (param: string) =>
   (req: AuthRequest, res: Response, next: NextFunction): void => {
     if (!isObjectId(req.params[param])) {
       res.status(400).json({ error: `${param} inválido.` })

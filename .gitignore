@@ -11,6 +11,7 @@ dist
 coverage
 bkp
 *.local
+data/*.csv
 
 .vscode/*
 !.vscode/extensions.json

@@ -9,11 +9,8 @@ import type { AuthRequest } from '@/types/index.ts'
 
 const router = Router()
 
-// Todas as rotas de livros exigem autenticação
-router.use(authenticate)
-
-// ── GET /books ────────────────────────────────────────────────────
-router.get('/', authorize('books', 'read'), async (_req, res: Response) => {
+// ── GET /books é público — qualquer visitante pode listar os livros
+router.get('/', async (_req, res: Response) => {
   try {
     const books = await Book.find()
       .populate('subgeneros', 'nome slug')
@@ -28,31 +25,26 @@ router.get('/', authorize('books', 'read'), async (_req, res: Response) => {
   }
 })
 
-// ── GET /books/:id ────────────────────────────────────────────────
-router.get(
-  '/:id',
-  validateObjectId('id'),
-  authorize('books', 'read'),
-  async (req: AuthRequest, res: Response) => {
-    try {
-      const book = await Book.findById(req.params.id)
-        .populate('subgeneros', 'nome slug')
-        .populate('quem_user_id', 'name avatar_url')
-        .populate('added_by', 'name')
-        .lean()
+// ── GET /books/:id é público
+router.get('/:id', validateObjectId('id'), async (req: AuthRequest, res: Response) => {
+  try {
+    const book = await Book.findById(req.params.id)
+      .populate('subgeneros', 'nome slug')
+      .populate('quem_user_id', 'name avatar_url')
+      .populate('added_by', 'name')
+      .lean()
 
-      if (!book) {
-        res.status(404).json({ error: 'Livro não encontrado.' })
-        return
-      }
-
-      res.json(book)
-    } catch (err) {
-      console.error('[GET /books/:id]', err)
-      res.status(500).json({ error: 'Erro ao buscar livro.' })
+    if (!book) {
+      res.status(404).json({ error: 'Livro não encontrado.' })
+      return
     }
-  },
-)
+
+    res.json(book)
+  } catch (err) {
+    console.error('[GET /books/:id]', err)
+    res.status(500).json({ error: 'Erro ao buscar livro.' })
+  }
+})
 
 // ── POST /books ───────────────────────────────────────────────────
 router.post(

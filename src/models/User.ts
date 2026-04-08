@@ -14,10 +14,10 @@ export interface IUser {
 const UserSchema = new Schema<IUser>(
   {
     supabase_uid: { type: String, required: true, unique: true },
-    email:        { type: String, required: true, unique: true },
-    name:         { type: String, required: true },
-    avatar_url:   { type: String },
-    role:         { type: String, enum: ['admin', 'editor', 'viewer'], default: 'viewer' },
+    email: { type: String, required: true, unique: true },
+    name: { type: String, required: true },
+    avatar_url: { type: String },
+    role: { type: String, enum: ['admin', 'editor', 'viewer'], default: 'viewer' },
     last_seen_at: { type: Date, default: Date.now },
   },
   {

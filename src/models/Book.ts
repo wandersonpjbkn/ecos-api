@@ -7,11 +7,11 @@ export interface IBook {
   autor: string
   categoria: string
   midia: 'Livro' | 'Mangá' | 'HQ'
-  subgeneros: Types.ObjectId[]         // refs → Subgenero
-  quem_nome: string                    // valor histórico — sempre preservado
-  quem_user_id?: Types.ObjectId        // preenchido quando o membro criar conta
+  subgeneros: Types.ObjectId[] // refs → Subgenero
+  quem_nome: string // valor histórico — sempre preservado
+  quem_user_id?: Types.ObjectId // preenchido quando o membro criar conta
   porque: string
-  added_by: Types.ObjectId             // quem cadastrou no sistema
+  added_by: Types.ObjectId // quem cadastrou no sistema
   updated_at: Date
 
   // Enriquecimento Google Books
@@ -29,35 +29,35 @@ export interface IBook {
 
 const EditHistorySchema = new Schema<EditHistoryEntry>(
   {
-    field:          { type: String, required: true },
+    field: { type: String, required: true },
     previous_value: { type: String, required: true },
-    edited_at:      { type: Date, required: true },
-    edited_by:      { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    edited_at: { type: Date, required: true },
+    edited_by: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   },
   { _id: false },
 )
 
 const BookSchema = new Schema<IBook>(
   {
-    titulo:         { type: String, required: true },
-    autor:          { type: String, required: true },
-    categoria:      { type: String, required: true },
-    midia:          { type: String, enum: ['Livro', 'Mangá', 'HQ'], required: true },
-    subgeneros:     [{ type: Schema.Types.ObjectId, ref: 'Subgenero' }],
-    quem_nome:      { type: String, required: true },
-    quem_user_id:   { type: Schema.Types.ObjectId, ref: 'User' },
-    porque:         { type: String, default: '' },
-    added_by:       { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    titulo: { type: String, required: true },
+    autor: { type: String, required: true },
+    categoria: { type: String, required: true },
+    midia: { type: String, enum: ['Livro', 'Mangá', 'HQ'], required: true },
+    subgeneros: [{ type: Schema.Types.ObjectId, ref: 'Subgenero' }],
+    quem_nome: { type: String, required: true },
+    quem_user_id: { type: Schema.Types.ObjectId, ref: 'User' },
+    porque: { type: String, default: '' },
+    added_by: { type: Schema.Types.ObjectId, ref: 'User', required: true },
 
-    isbn:           { type: String },
-    cover_url:      { type: String },
-    synopsis:       { type: String },
-    page_count:     { type: Number },
+    isbn: { type: String },
+    cover_url: { type: String },
+    synopsis: { type: String },
+    page_count: { type: Number },
     published_year: { type: Number },
-    google_books_id:{ type: String },
-    enriched_at:    { type: Date },
+    google_books_id: { type: String },
+    enriched_at: { type: Date },
 
-    edit_history:   { type: [EditHistorySchema], default: [] },
+    edit_history: { type: [EditHistorySchema], default: [] },
   },
   {
     timestamps: { createdAt: 'added_at', updatedAt: 'updated_at' },
