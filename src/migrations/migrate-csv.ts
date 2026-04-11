@@ -9,15 +9,15 @@
  *  5. Importa os 87 livros resolvendo os ObjectIds dos sub-gêneros
  *
  * Uso:
- *  yarn migrate
+ *  yarn migrate:csv
  *
  * Seguro para rodar múltiplas vezes — usa upsert em tudo.
  */
 
 import 'dotenv/config'
 import { createReadStream } from 'fs'
-import { fileURLToPath } from 'url'
 import { dirname, resolve } from 'path'
+import { fileURLToPath } from 'url'
 import { parse } from 'csv-parse'
 import mongoose from 'mongoose'
 

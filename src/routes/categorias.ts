@@ -1,0 +1,80 @@
+import { Router } from 'express'
+import type { Response } from 'express'
+
+import { authenticate } from '@/middleware/authenticate.js'
+import { authorize } from '@/middleware/authorize.js'
+import { validateCreateNamed, validateObjectId } from '@/middleware/validate.js'
+import { Categoria } from '@/models/Categoria.js'
+import type { AuthRequest } from '@/types/index.ts'
+
+const router = Router()
+router.use(authenticate)
+
+const slugify = (value: string): string =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-{2,}/g, '-')
+
+router.get('/', authorize('categorias', 'read'), async (_req, res: Response) => {
+  try {
+    res.json(await Categoria.find().sort({ nome: 1 }).lean())
+  } catch (err) {
+    console.error('[GET /categorias]', err)
+    res.status(500).json({ error: 'Erro ao buscar categorias.' })
+  }
+})
+
+router.post(
+  '/',
+  authorize('categorias', 'create'),
+  validateCreateNamed,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const nome = req.body.nome.trim()
+      const slug = slugify(nome)
+      const exists = await Categoria.findOne({ slug })
+      if (exists) {
+        res.status(409).json({ error: `Categoria "${exists.nome}" já existe.` })
+        return
+      }
+      const categoria = await Categoria.create({ nome, slug, created_by: req.user!._id })
+      console.log(`[POST /categorias] "${categoria.nome}" criada por ${req.user!.email}`)
+      res.status(201).json(categoria)
+    } catch (err) {
+      console.error('[POST /categorias]', err)
+      res.status(500).json({ error: 'Erro ao criar categoria.' })
+    }
+  },
+)
+
+router.delete(
+  '/:id',
+  validateObjectId('id'),
+  authorize('categorias', 'delete'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { Book } = await import('@/models/Book.js')
+      if (await Book.exists({ categoria: req.params.id })) {
+        res.status(409).json({ error: 'Categoria em uso. Reatribua os livros antes de excluir.' })
+        return
+      }
+      const categoria = await Categoria.findByIdAndDelete(req.params.id)
+      if (!categoria) {
+        res.status(404).json({ error: 'Categoria não encontrada.' })
+        return
+      }
+      console.log(`[DELETE /categorias/:id] "${categoria.nome}" removida por ${req.user!.email}`)
+      res.status(204).send()
+    } catch (err) {
+      console.error('[DELETE /categorias/:id]', err)
+      res.status(500).json({ error: 'Erro ao remover categoria.' })
+    }
+  },
+)
+
+export default router

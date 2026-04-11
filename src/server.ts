@@ -1,17 +1,21 @@
 import 'dotenv/config'
 
-import express from 'express'
 import cors from 'cors'
+import express from 'express'
 import helmet from 'helmet'
 
 import { connectDB } from '@/config/db.js'
-import { seedPermissions } from '@/utils/seed.js'
-
+import adminRoutes from '@/routes/admin.js'
 import authRoutes from '@/routes/auth.js'
+
+import autorRoutes from '@/routes/autores.js'
 import bookRoutes from '@/routes/books.js'
-import userRoutes from '@/routes/users.js'
-import subgeneroRoutes from '@/routes/subgeneros.js'
+import categoriaRoutes from '@/routes/categorias.js'
+import midiaRoutes from '@/routes/midias.js'
 import permissionRoutes from '@/routes/permissions.js'
+import subgeneroRoutes from '@/routes/subgeneros.js'
+import userRoutes from '@/routes/users.js'
+import { seedPermissions } from '@/utils/seed.js'
 
 // ── CORS ──────────────────────────────────────────────────────────
 const CORS_ORIGIN = process.env.CORS_ORIGIN
@@ -40,8 +44,12 @@ app.get('/health', (_req, res) => {
 app.use('/auth', authRoutes)
 app.use('/books', bookRoutes)
 app.use('/users', userRoutes)
+app.use('/autores', autorRoutes)
+app.use('/midias', midiaRoutes)
+app.use('/categorias', categoriaRoutes)
 app.use('/subgeneros', subgeneroRoutes)
 app.use('/permissions', permissionRoutes)
+app.use('/admin', adminRoutes)
 
 // ── 404 ───────────────────────────────────────────────────────────
 app.use((_req, res) => {

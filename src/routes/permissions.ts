@@ -1,10 +1,10 @@
 import { Router } from 'express'
 import type { Response } from 'express'
 
+import { ACTIONS, RESOURCES } from '@/constants/index.js'
 import { authenticate } from '@/middleware/authenticate.js'
 import { adminOnly } from '@/middleware/authorize.js'
 import { Permission } from '@/models/Permission.js'
-import { ACTIONS, RESOURCES } from '@/constants/index.js'
 import type { AuthRequest, Action } from '@/types/index.ts'
 
 const router = Router()

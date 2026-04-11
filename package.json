@@ -9,7 +9,10 @@
     "start": "node dist/server.js",
     "lint": "eslint src --fix",
     "ts": "tsc --noEmit",
-    "migrate": "tsx -r tsconfig-paths/register src/scripts/migrate.ts"
+    "migrate:csv": "tsx -r tsconfig-paths/register src/migrations/migrate-csv.ts",
+    "migrate:categorias": "tsx -r tsconfig-paths/register src/migrations/migrate-categorias.ts",
+    "migrate:autor": "tsx -r tsconfig-paths/register src/migrations/migrate-autor.ts",
+    "migrate:midia": "tsx -r tsconfig-paths/register src/migrations/migrate-midia.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -31,6 +34,7 @@
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-import": "^2.32.0",
     "globals": "^15.12.0",
+    "jiti": "^2.6.1",
     "tsc-alias": "^1.8.10",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.19.2",

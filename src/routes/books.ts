@@ -9,10 +9,13 @@ import type { AuthRequest } from '@/types/index.ts'
 
 const router = Router()
 
-// ── GET /books é público — qualquer visitante pode listar os livros
+// ── GET /books — público ──────────────────────────────────────────
 router.get('/', async (_req, res: Response) => {
   try {
     const books = await Book.find()
+      .populate('autor', 'nome slug')
+      .populate('categoria', 'nome slug')
+      .populate('midia', 'nome slug')
       .populate('subgeneros', 'nome slug')
       .populate('quem_user_id', 'name avatar_url')
       .sort({ added_at: -1 })
@@ -25,10 +28,13 @@ router.get('/', async (_req, res: Response) => {
   }
 })
 
-// ── GET /books/:id é público
+// ── GET /books/:id — público ──────────────────────────────────────
 router.get('/:id', validateObjectId('id'), async (req: AuthRequest, res: Response) => {
   try {
     const book = await Book.findById(req.params.id)
+      .populate('autor', 'nome slug')
+      .populate('categoria', 'nome slug')
+      .populate('midia', 'nome slug')
       .populate('subgeneros', 'nome slug')
       .populate('quem_user_id', 'name avatar_url')
       .populate('added_by', 'name')
@@ -49,6 +55,7 @@ router.get('/:id', validateObjectId('id'), async (req: AuthRequest, res: Respons
 // ── POST /books ───────────────────────────────────────────────────
 router.post(
   '/',
+  authenticate,
   authorize('books', 'create'),
   validateCreateBook,
   async (req: AuthRequest, res: Response) => {
@@ -72,6 +79,7 @@ router.post(
 router.patch(
   '/:id',
   validateObjectId('id'),
+  authenticate,
   authorize('books', 'update'),
   validateUpdateBook,
   async (req: AuthRequest, res: Response) => {
@@ -86,18 +94,17 @@ router.patch(
       const isAdmin = user.role === 'admin'
       const isOwner = book.quem_user_id?.toString() === user._id.toString()
 
-      // Editors só podem editar livros que indicaram
       if (!isAdmin && !isOwner) {
         res.status(403).json({ error: 'Você só pode editar suas próprias indicações.' })
         return
       }
 
-      // Registra no edit_history apenas os campos que mudaram
+      // Registra no edit_history apenas campos que mudaram
       const trackable = ['titulo', 'autor', 'categoria', 'midia', 'porque', 'isbn'] as const
       const now = new Date()
 
       for (const field of trackable) {
-        if (req.body[field] !== undefined && req.body[field] !== book[field]) {
+        if (req.body[field] !== undefined && req.body[field] !== String(book[field])) {
           book.edit_history.push({
             field,
             previous_value: String(book[field] ?? ''),
@@ -123,6 +130,7 @@ router.patch(
 router.delete(
   '/:id',
   validateObjectId('id'),
+  authenticate,
   authorize('books', 'delete'),
   async (req: AuthRequest, res: Response) => {
     try {

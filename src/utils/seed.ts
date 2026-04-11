@@ -1,5 +1,5 @@
-import { Permission } from '@/models/Permission.js'
 import { DEFAULT_PERMISSIONS } from '@/constants/index.js'
+import { Permission } from '@/models/Permission.js'
 
 /**
  * Garante que a tabela de permissões existe com os valores padrão.

@@ -13,20 +13,20 @@ export const validateCreateBook = (req: AuthRequest, res: Response, next: NextFu
     res.status(400).json({ error: 'titulo é obrigatório.' })
     return
   }
-  if (!isString(autor)) {
-    res.status(400).json({ error: 'autor é obrigatório.' })
+  if (!isObjectId(autor)) {
+    res.status(400).json({ error: 'autor deve ser um ObjectId válido.' })
     return
   }
-  if (!isString(categoria)) {
-    res.status(400).json({ error: 'categoria é obrigatória.' })
+  if (!isObjectId(categoria)) {
+    res.status(400).json({ error: 'categoria deve ser um ObjectId válido.' })
+    return
+  }
+  if (!isObjectId(midia)) {
+    res.status(400).json({ error: 'midia deve ser um ObjectId válido.' })
     return
   }
   if (!isString(quem_nome)) {
     res.status(400).json({ error: 'quem_nome é obrigatório.' })
-    return
-  }
-  if (!['Livro', 'Mangá', 'HQ'].includes(midia)) {
-    res.status(400).json({ error: 'midia deve ser Livro, Mangá ou HQ.' })
     return
   }
 
@@ -44,17 +44,18 @@ export const validateUpdateBook = (req: AuthRequest, res: Response, next: NextFu
     'porque',
     'isbn',
   ]
-  const keys = Object.keys(req.body)
 
-  const unknown = keys.filter((k) => !allowed.includes(k))
+  const unknown = Object.keys(req.body).filter((k) => !allowed.includes(k))
   if (unknown.length > 0) {
     res.status(400).json({ error: `Campos não permitidos: ${unknown.join(', ')}.` })
     return
   }
 
-  if (req.body.midia && !['Livro', 'Mangá', 'HQ'].includes(req.body.midia)) {
-    res.status(400).json({ error: 'midia deve ser Livro, Mangá ou HQ.' })
-    return
+  for (const field of ['autor', 'categoria', 'midia'] as const) {
+    if (req.body[field] !== undefined && !isObjectId(req.body[field])) {
+      res.status(400).json({ error: `${field} deve ser um ObjectId válido.` })
+      return
+    }
   }
 
   next()
@@ -64,36 +65,31 @@ export const validateUpdateBook = (req: AuthRequest, res: Response, next: NextFu
 
 export const validateUpdateRole = (req: AuthRequest, res: Response, next: NextFunction): void => {
   const { role } = req.body
-
   if (!['admin', 'editor', 'viewer'].includes(role)) {
     res.status(400).json({ error: 'role deve ser admin, editor ou viewer.' })
     return
   }
-
   next()
 }
 
-// ── Subgeneros ────────────────────────────────────────────────────
+// ── Entidades de catálogo (Autor, Midia, Categoria, Subgenero) ────
+// Validação compartilhada — só nome obrigatório, máx 60 chars
 
-export const validateCreateSubgenero = (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction,
-): void => {
+export const validateCreateNamed = (req: AuthRequest, res: Response, next: NextFunction): void => {
   const { nome } = req.body
-
   if (!isString(nome)) {
     res.status(400).json({ error: 'nome é obrigatório.' })
     return
   }
-
   if (nome.trim().length > 60) {
     res.status(400).json({ error: 'nome deve ter no máximo 60 caracteres.' })
     return
   }
-
   next()
 }
+
+// Mantido por compatibilidade com importações existentes em subgeneros.ts
+export const validateCreateSubgenero = validateCreateNamed
 
 // ── Params ────────────────────────────────────────────────────────
 
