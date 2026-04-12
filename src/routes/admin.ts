@@ -4,6 +4,7 @@ import type { Response } from 'express'
 import { authenticate } from '@/middleware/authenticate.js'
 import { adminOnly } from '@/middleware/authorize.js'
 import { Book } from '@/models/Book.js'
+import { EnrichmentRun } from '@/models/EnrichmentRun.js'
 import type { AuthRequest } from '@/types/index.ts'
 import { fetchGoogleBooks } from '@/utils/googleBooks.js'
 
@@ -30,6 +31,7 @@ router.post('/books/enrich', async (req: AuthRequest, res: Response) => {
   }
 
   const force = req.body?.force === true
+  const startedAt = new Date()
 
   try {
     const filter = force
@@ -65,6 +67,7 @@ router.post('/books/enrich', async (req: AuthRequest, res: Response) => {
       status: 'enriched' | 'not_found' | 'failed'
       strategy?: 'isbn' | 'title_author_pt' | 'title_author'
       cover_url?: string
+      error?: string
     }> = []
 
     let enriched = 0
@@ -97,10 +100,41 @@ router.post('/books/enrich', async (req: AuthRequest, res: Response) => {
         })
       } catch (err) {
         failed++
-        results.push({ id: String(book._id), titulo: book.titulo, status: 'failed' })
+        const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido'
+        results.push({
+          id: String(book._id),
+          titulo: book.titulo,
+          status: 'failed',
+          error: errorMessage,
+        })
         console.error(`[enrich] ❌ "${book.titulo}":`, err)
       }
     }
+
+    const withCoverAfter = await Book.countDocuments({ cover_url: { $exists: true, $ne: '' } })
+    const totalAfter = await Book.countDocuments()
+    const coverageAfter = totalAfter > 0 ? Math.round((withCoverAfter / totalAfter) * 100) : 0
+
+    await EnrichmentRun.create({
+      started_at: startedAt,
+      finished_at: new Date(),
+      force,
+      initiated_by: req.user!._id,
+      initiated_by_email: req.user!.email,
+      total: books.length,
+      enriched,
+      skipped,
+      failed,
+      coverage_pct_after: coverageAfter,
+      results: results.map((r) => ({
+        book_id: r.id,
+        titulo: r.titulo,
+        status: r.status,
+        strategy: r.strategy,
+        cover_url: r.cover_url,
+        error: r.error,
+      })),
+    })
 
     console.log(
       `[POST /admin/books/enrich] Concluído: ${enriched} enriquecidos,` +
@@ -113,6 +147,7 @@ router.post('/books/enrich', async (req: AuthRequest, res: Response) => {
       enriched,
       skipped,
       failed,
+      coverage_pct_after: coverageAfter,
       results,
     })
   } catch (err) {
@@ -148,6 +183,31 @@ router.get('/books/enrich/status', async (_req: AuthRequest, res: Response) => {
   } catch (err) {
     console.error('[GET /admin/books/enrich/status]', err)
     res.status(500).json({ error: 'Erro ao buscar status.' })
+  }
+})
+
+// ── GET /admin/books/enrich/history ───────────────────────────────
+/**
+ * Histórico de execuções de enriquecimento para análise.
+ * Retorna runs ordenados da mais recente para a mais antiga.
+ */
+router.get('/books/enrich/history', async (req: AuthRequest, res: Response) => {
+  try {
+    const parsedLimit = Number(req.query.limit ?? 10)
+    const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 50) : 10
+
+    const history = await EnrichmentRun.find()
+      .sort({ finished_at: -1 })
+      .limit(limit)
+      .select(
+        'started_at finished_at force initiated_by_email total enriched skipped failed coverage_pct_after results',
+      )
+      .lean()
+
+    res.json({ total_runs: history.length, history })
+  } catch (err) {
+    console.error('[GET /admin/books/enrich/history]', err)
+    res.status(500).json({ error: 'Erro ao buscar histórico de enriquecimentos.' })
   }
 })
 
