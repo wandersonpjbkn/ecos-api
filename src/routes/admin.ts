@@ -4,6 +4,7 @@ import type { Response } from 'express'
 import { authenticate } from '@/middleware/authenticate.js'
 import { adminOnly } from '@/middleware/authorize.js'
 import { Book } from '@/models/Book.js'
+import { ClaimHistory } from '@/models/ClaimHistory.js'
 import { EnrichmentRun } from '@/models/EnrichmentRun.js'
 import type { AuthRequest } from '@/types/index.ts'
 import { fetchGoogleBooks } from '@/utils/googleBooks.js'
@@ -208,6 +209,30 @@ router.get('/books/enrich/history', async (req: AuthRequest, res: Response) => {
   } catch (err) {
     console.error('[GET /admin/books/enrich/history]', err)
     res.status(500).json({ error: 'Erro ao buscar histórico de enriquecimentos.' })
+  }
+})
+
+// ── GET /admin/users/claims/history ──────────────────────────────
+/**
+ * Histórico de claims/desvínculos para auditoria do admin.
+ */
+router.get('/users/claims/history', async (req: AuthRequest, res: Response) => {
+  try {
+    const parsedLimit = Number(req.query.limit ?? 20)
+    const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 100) : 20
+
+    const history = await ClaimHistory.find()
+      .sort({ performed_at: -1 })
+      .limit(limit)
+      .select(
+        'action user_id user_email claim_name previous_claim_names affected_books performed_at',
+      )
+      .lean()
+
+    res.json({ total: history.length, history })
+  } catch (err) {
+    console.error('[GET /admin/users/claims/history]', err)
+    res.status(500).json({ error: 'Erro ao buscar histórico de claims.' })
   }
 })
 

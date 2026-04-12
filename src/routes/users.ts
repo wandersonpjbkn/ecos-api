@@ -4,10 +4,21 @@ import type { Response } from 'express'
 import { authenticate } from '@/middleware/authenticate.js'
 import { authorize, adminOnly } from '@/middleware/authorize.js'
 import { validateUpdateRole, validateObjectId } from '@/middleware/validate.js'
+import { Book } from '@/models/Book.js'
+import { ClaimHistory } from '@/models/ClaimHistory.js'
 import { User } from '@/models/User.js'
 import type { AuthRequest } from '@/types/index.ts'
 
 const router = Router()
+
+const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+const getCurrentClaims = async (userId: string): Promise<string[]> => {
+  const claimedNames = await Book.distinct('quem_nome', { quem_user_id: userId })
+  return claimedNames.filter(
+    (name): name is string => typeof name === 'string' && name.trim().length > 0,
+  )
+}
 
 router.use(authenticate)
 
@@ -28,6 +39,157 @@ router.get('/', authorize('users', 'read'), async (_req, res: Response) => {
 // Retorna o próprio usuário autenticado
 router.get('/me', (req: AuthRequest, res: Response) => {
   res.json({ user: req.user })
+})
+
+// ── GET /users/me/claim ──────────────────────────────────────────
+// Retorna o claim atual (se existir) e estatísticas básicas
+router.get('/me/claim', async (req: AuthRequest, res: Response) => {
+  try {
+    const currentClaims = await getCurrentClaims(req.user!._id.toString())
+
+    if (currentClaims.length === 0) {
+      res.json({ claim_name: null, claimed_books: 0, has_claim: false })
+      return
+    }
+
+    const claimName = currentClaims[0]
+    const claimedBooks = await Book.countDocuments({
+      quem_user_id: req.user!._id,
+      quem_nome: { $regex: `^${escapeRegExp(claimName)}$`, $options: 'i' },
+    })
+
+    res.json({
+      claim_name: claimName,
+      claimed_books: claimedBooks,
+      has_claim: true,
+      warning:
+        currentClaims.length > 1
+          ? 'Foram encontrados múltiplos claims para este usuário. Desvincule e refaça o claim.'
+          : undefined,
+    })
+  } catch (err) {
+    console.error('[GET /users/me/claim]', err)
+    res.status(500).json({ error: 'Erro ao buscar claim atual.' })
+  }
+})
+
+// ── POST /users/me/claim ─────────────────────────────────────────
+// Vincula o usuário aos livros cujo quem_nome corresponde ao nome informado
+router.post('/me/claim', async (req: AuthRequest, res: Response) => {
+  try {
+    const rawName = req.body?.quem_nome
+    if (typeof rawName !== 'string' || rawName.trim().length === 0) {
+      res.status(400).json({ error: 'quem_nome é obrigatório.' })
+      return
+    }
+
+    const claimName = rawName.trim()
+    if (claimName.length > 60) {
+      res.status(400).json({ error: 'quem_nome deve ter no máximo 60 caracteres.' })
+      return
+    }
+
+    const user = req.user!
+    const currentClaims = await getCurrentClaims(user._id.toString())
+
+    if (currentClaims.length > 1) {
+      res.status(409).json({
+        error:
+          'Seu usuário possui múltiplos claims ativos. Desvincule o claim atual antes de continuar.',
+      })
+      return
+    }
+
+    if (currentClaims.length === 1 && currentClaims[0].toLowerCase() !== claimName.toLowerCase()) {
+      res.status(409).json({
+        error: `Você já possui claim ativo em "${currentClaims[0]}". Desvincule antes de reivindicar outro.`,
+      })
+      return
+    }
+
+    const alreadyClaimedByAnother = await Book.exists({
+      quem_nome: { $regex: `^${escapeRegExp(claimName)}$`, $options: 'i' },
+      quem_user_id: { $nin: [null, user._id] },
+    })
+
+    if (alreadyClaimedByAnother) {
+      res.status(409).json({ error: 'Este nome já foi reivindicado por outro usuário.' })
+      return
+    }
+
+    const targetBooks = await Book.countDocuments({
+      quem_nome: { $regex: `^${escapeRegExp(claimName)}$`, $options: 'i' },
+    })
+
+    if (targetBooks === 0) {
+      res.status(404).json({ error: 'Nenhuma menção encontrada para esse nome.' })
+      return
+    }
+
+    const result = await Book.updateMany(
+      {
+        quem_nome: { $regex: `^${escapeRegExp(claimName)}$`, $options: 'i' },
+        quem_user_id: { $in: [null, user._id] },
+      },
+      { $set: { quem_user_id: user._id } },
+    )
+
+    await ClaimHistory.create({
+      action: 'claim',
+      user_id: user._id,
+      user_email: user.email,
+      claim_name: claimName,
+      affected_books: result.modifiedCount,
+      performed_at: new Date(),
+    })
+
+    res.json({
+      message: 'Claim realizado com sucesso.',
+      claim_name: claimName,
+      matched_books: targetBooks,
+      updated_books: result.modifiedCount,
+    })
+  } catch (err) {
+    console.error('[POST /users/me/claim]', err)
+    res.status(500).json({ error: 'Erro ao realizar claim.' })
+  }
+})
+
+// ── DELETE /users/me/claim ───────────────────────────────────────
+// Remove o vínculo do usuário com seu claim atual
+router.delete('/me/claim', async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user!
+    const currentClaims = await getCurrentClaims(user._id.toString())
+
+    if (currentClaims.length === 0) {
+      res.status(404).json({ error: 'Você não possui claim ativo.' })
+      return
+    }
+
+    const result = await Book.updateMany(
+      { quem_user_id: user._id },
+      { $unset: { quem_user_id: '' } },
+    )
+
+    await ClaimHistory.create({
+      action: 'unclaim',
+      user_id: user._id,
+      user_email: user.email,
+      previous_claim_names: currentClaims,
+      affected_books: result.modifiedCount,
+      performed_at: new Date(),
+    })
+
+    res.json({
+      message: 'Claim desvinculado com sucesso.',
+      previous_claim_names: currentClaims,
+      updated_books: result.modifiedCount,
+    })
+  } catch (err) {
+    console.error('[DELETE /users/me/claim]', err)
+    res.status(500).json({ error: 'Erro ao desvincular claim.' })
+  }
 })
 
 // ── PATCH /users/:id/role ─────────────────────────────────────────
