@@ -10,6 +10,8 @@
  * Se não definida, funciona sem chave (limite ~1.000 req/dia).
  */
 
+type GoogleBooksStrategy = 'isbn' | 'title_author_pt' | 'title_author'
+
 interface GoogleBooksResult {
   google_books_id: string
   cover_url?: string
@@ -17,6 +19,7 @@ interface GoogleBooksResult {
   isbn?: string
   page_count?: number
   published_year?: number
+  strategy: GoogleBooksStrategy
 }
 
 interface GoogleBooksVolume {
@@ -74,7 +77,7 @@ export const fetchGoogleBooks = async (
       const volume = await fetchVolume(url)
       if (volume) {
         console.log(`[googleBooks] ✅ ISBN match: "${titulo}"`)
-        return extractResult(volume)
+        return extractResult(volume, 'isbn')
       }
     } catch (err) {
       console.warn(`[googleBooks] Falha na busca por ISBN "${isbn}":`, err)
@@ -89,7 +92,7 @@ export const fetchGoogleBooks = async (
     const volume = await fetchVolume(url)
     if (volume) {
       console.log(`[googleBooks] ✅ título+autor (pt) match: "${titulo}"`)
-      return extractResult(volume)
+      return extractResult(volume, 'title_author_pt')
     }
   } catch (err) {
     console.warn(`[googleBooks] Falha na busca por título+autor (pt) "${titulo}":`, err)
@@ -101,7 +104,7 @@ export const fetchGoogleBooks = async (
     const volume = await fetchVolume(url)
     if (volume) {
       console.log(`[googleBooks] ✅ título+autor (sem lang) match: "${titulo}"`)
-      return extractResult(volume)
+      return extractResult(volume, 'title_author')
     }
   } catch (err) {
     console.warn(`[googleBooks] Falha na busca sem restrição "${titulo}":`, err)
@@ -111,7 +114,7 @@ export const fetchGoogleBooks = async (
   return null
 }
 
-const extractResult = (volume: GoogleBooksVolume): GoogleBooksResult => {
+const extractResult = (volume: GoogleBooksVolume, strategy: GoogleBooksStrategy): GoogleBooksResult => {
   const info = volume.volumeInfo
 
   // Prefere thumbnail sobre smallThumbnail e força HTTPS
@@ -134,5 +137,6 @@ const extractResult = (volume: GoogleBooksVolume): GoogleBooksResult => {
     isbn,
     page_count: info.pageCount ?? undefined,
     published_year,
+    strategy,
   }
 }
