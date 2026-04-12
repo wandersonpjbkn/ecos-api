@@ -24,10 +24,19 @@ router.use(authenticate, adminOnly)
  * Retorna relatório completo com totais e status de cada livro.
  */
 router.post('/books/enrich', async (req: AuthRequest, res: Response) => {
+  if (req.body?.force !== undefined && typeof req.body.force !== 'boolean') {
+    res.status(400).json({ error: 'O campo "force" deve ser booleano.' })
+    return
+  }
+
   const force = req.body?.force === true
 
   try {
-    const filter = force ? {} : { cover_url: { $exists: false } }
+    const filter = force
+      ? {}
+      : {
+          $or: [{ cover_url: { $exists: false } }, { cover_url: null }, { cover_url: '' }],
+        }
     const books = await Book.find(filter)
       .populate<{ autor: { nome: string } }>('autor', 'nome')
       .select('titulo autor isbn cover_url enriched_at')
@@ -54,7 +63,7 @@ router.post('/books/enrich', async (req: AuthRequest, res: Response) => {
       id: string
       titulo: string
       status: 'enriched' | 'not_found' | 'failed'
-      strategy?: 'isbn' | 'title_author'
+      strategy?: 'isbn' | 'title_author_pt' | 'title_author'
       cover_url?: string
     }> = []
 
@@ -83,7 +92,7 @@ router.post('/books/enrich', async (req: AuthRequest, res: Response) => {
           id: String(book._id),
           titulo: book.titulo,
           status: 'enriched',
-          strategy: book.isbn ? 'isbn' : 'title_author',
+          strategy: data.strategy,
           cover_url: data.cover_url,
         })
       } catch (err) {
