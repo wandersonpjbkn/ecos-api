@@ -5,20 +5,21 @@ import express from 'express'
 import helmet from 'helmet'
 
 import { connectDB } from '@/config/db.js'
+import { seedPermissions } from '@/utils/seed.js'
 import adminRoutes from '@/routes/admin.js'
 import authRoutes from '@/routes/auth.js'
-
+import permissionRoutes from '@/routes/permissions.js'
 import autorRoutes from '@/routes/autores.js'
 import bookRoutes from '@/routes/books.js'
 import categoriaRoutes from '@/routes/categorias.js'
 import midiaRoutes from '@/routes/midias.js'
-import permissionRoutes from '@/routes/permissions.js'
 import subgeneroRoutes from '@/routes/subgeneros.js'
 import userRoutes from '@/routes/users.js'
-import { seedPermissions } from '@/utils/seed.js'
 
 // ── CORS ──────────────────────────────────────────────────────────
 const CORS_ORIGIN = process.env.CORS_ORIGIN
+const LOCAL_CORS_ORIGIN =
+  process.env.LOCAL_CORS_ORIGIN ?? 'http://localhost:5173,http://localhost:8080'
 
 if (!CORS_ORIGIN && process.env.NODE_ENV === 'production') {
   console.error('❌ CORS_ORIGIN não definida em produção. Encerrando.')
@@ -27,7 +28,7 @@ if (!CORS_ORIGIN && process.env.NODE_ENV === 'production') {
 
 const allowedOrigins = CORS_ORIGIN
   ? CORS_ORIGIN.split(',').map((o) => o.trim())
-  : ['http://localhost:5173', 'http://localhost:8080']
+  : LOCAL_CORS_ORIGIN.split(',').map((o) => o.trim())
 
 // ── App ───────────────────────────────────────────────────────────
 const app = express()
