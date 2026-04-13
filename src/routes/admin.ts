@@ -14,17 +14,6 @@ const router = Router()
 router.use(authenticate, adminOnly)
 
 // ── POST /admin/books/enrich ──────────────────────────────────────
-/**
- * Enriquece livros com dados da Google Books API.
- *
- * Comportamento padrão: processa apenas livros sem cover_url.
- * Com { force: true } no body: re-enriquece todos os livros.
- *
- * Busca na ordem: ISBN → título+autor (pt) → título+autor (sem lang).
- * Delay de 200ms entre requests para respeitar o rate limit da API.
- *
- * Retorna relatório completo com totais e status de cada livro.
- */
 router.post('/books/enrich', async (req: AuthRequest, res: Response) => {
   if (req.body?.force !== undefined && typeof req.body.force !== 'boolean') {
     res.status(400).json({ error: 'O campo "force" deve ser booleano.' })
@@ -37,9 +26,8 @@ router.post('/books/enrich', async (req: AuthRequest, res: Response) => {
   try {
     const filter = force
       ? {}
-      : {
-          $or: [{ cover_url: { $exists: false } }, { cover_url: null }, { cover_url: '' }],
-        }
+      : { $or: [{ cover_url: { $exists: false } }, { cover_url: null }, { cover_url: '' }] }
+
     const books = await Book.find(filter)
       .populate<{ autor: { nome: string } }>('autor', 'nome')
       .select('titulo autor isbn cover_url enriched_at')
@@ -81,7 +69,19 @@ router.post('/books/enrich', async (req: AuthRequest, res: Response) => {
       }
 
       try {
-        const data = await fetchGoogleBooks(book.titulo, book.autor.nome, book.isbn)
+        // Guarda de tipo: autor pode não ter sido populado em documentos com migração incompleta
+        const autorPopulated =
+          book.autor !== null && typeof book.autor === 'object' && 'nome' in (book.autor as object)
+
+        if (!autorPopulated) {
+          console.warn(`[enrich] ⚠️  "${book.titulo}" sem autor populado — pulando`)
+          skipped++
+          results.push({ id: String(book._id), titulo: book.titulo, status: 'not_found' })
+          continue
+        }
+
+        const autorNome = (book.autor as unknown as { nome: string }).nome
+        const data = await fetchGoogleBooks(book.titulo, autorNome, book.isbn)
 
         if (!data) {
           skipped++
@@ -158,11 +158,6 @@ router.post('/books/enrich', async (req: AuthRequest, res: Response) => {
 })
 
 // ── GET /admin/books/enrich/status ────────────────────────────────
-/**
- * Resumo do estado atual do enriquecimento:
- * total de livros, quantos têm capa, cobertura percentual,
- * e data do último enriquecimento executado.
- */
 router.get('/books/enrich/status', async (_req: AuthRequest, res: Response) => {
   try {
     const [total, withCover, lastEnriched] = await Promise.all([
@@ -188,10 +183,6 @@ router.get('/books/enrich/status', async (_req: AuthRequest, res: Response) => {
 })
 
 // ── GET /admin/books/enrich/history ───────────────────────────────
-/**
- * Histórico de execuções de enriquecimento para análise.
- * Retorna runs ordenados da mais recente para a mais antiga.
- */
 router.get('/books/enrich/history', async (req: AuthRequest, res: Response) => {
   try {
     const parsedLimit = Number(req.query.limit ?? 10)
@@ -213,9 +204,6 @@ router.get('/books/enrich/history', async (req: AuthRequest, res: Response) => {
 })
 
 // ── GET /admin/users/claims/history ──────────────────────────────
-/**
- * Histórico de claims/desvínculos para auditoria do admin.
- */
 router.get('/users/claims/history', async (req: AuthRequest, res: Response) => {
   try {
     const parsedLimit = Number(req.query.limit ?? 20)
