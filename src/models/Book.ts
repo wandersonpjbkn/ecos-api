@@ -13,7 +13,7 @@ export interface IBook {
   added_by: Types.ObjectId
   updated_at: Date
 
-  // Enriquecimento Google Books
+  // Enriquecimento (Google Books / Open Library fallback)
   isbn?: string
   cover_url?: string
   synopsis?: string
