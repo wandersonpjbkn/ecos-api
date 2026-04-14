@@ -20,6 +20,7 @@ const slugify = (value: string): string =>
     .replace(/\s+/g, '-')
     .replace(/-{2,}/g, '-')
 
+// ── GET /categorias ───────────────────────────────────────────────
 router.get('/', authorize('categorias', 'read'), async (_req, res: Response) => {
   try {
     res.json(await Categoria.find().sort({ nome: 1 }).lean())
@@ -29,6 +30,7 @@ router.get('/', authorize('categorias', 'read'), async (_req, res: Response) => 
   }
 })
 
+// ── POST /categorias ──────────────────────────────────────────────
 router.post(
   '/',
   authorize('categorias', 'create'),
@@ -52,6 +54,43 @@ router.post(
   },
 )
 
+// ── PATCH /categorias/:id ─────────────────────────────────────────
+router.patch(
+  '/:id',
+  validateObjectId('id'),
+  authorize('categorias', 'update'),
+  validateCreateNamed,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const nome = req.body.nome.trim()
+      const slug = slugify(nome)
+
+      const conflict = await Categoria.findOne({ slug, _id: { $ne: req.params.id } })
+      if (conflict) {
+        res.status(409).json({ error: `Categoria "${conflict.nome}" já existe.` })
+        return
+      }
+
+      const categoria = await Categoria.findByIdAndUpdate(
+        req.params.id,
+        { nome, slug },
+        { new: true },
+      )
+      if (!categoria) {
+        res.status(404).json({ error: 'Categoria não encontrada.' })
+        return
+      }
+
+      console.log(`[PATCH /categorias/:id] "${categoria.nome}" atualizada por ${req.user!.email}`)
+      res.json(categoria)
+    } catch (err) {
+      console.error('[PATCH /categorias/:id]', err)
+      res.status(500).json({ error: 'Erro ao atualizar categoria.' })
+    }
+  },
+)
+
+// ── DELETE /categorias/:id ────────────────────────────────────────
 router.delete(
   '/:id',
   validateObjectId('id'),

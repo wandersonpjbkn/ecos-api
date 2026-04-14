@@ -59,8 +59,39 @@ router.post(
   },
 )
 
+// ── PATCH /midias/:id ─────────────────────────────────────────────
+router.patch(
+  '/:id',
+  validateObjectId('id'),
+  authorize('midias', 'update'),
+  validateCreateNamed,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const nome = req.body.nome.trim()
+      const slug = slugify(nome)
+
+      const conflict = await Midia.findOne({ slug, _id: { $ne: req.params.id } })
+      if (conflict) {
+        res.status(409).json({ error: `Mídia "${conflict.nome}" já existe.` })
+        return
+      }
+
+      const midia = await Midia.findByIdAndUpdate(req.params.id, { nome, slug }, { new: true })
+      if (!midia) {
+        res.status(404).json({ error: 'Mídia não encontrada.' })
+        return
+      }
+
+      console.log(`[PATCH /midias/:id] "${midia.nome}" atualizada por ${req.user!.email}`)
+      res.json(midia)
+    } catch (err) {
+      console.error('[PATCH /midias/:id]', err)
+      res.status(500).json({ error: 'Erro ao atualizar mídia.' })
+    }
+  },
+)
+
 // ── DELETE /midias/:id ────────────────────────────────────────────
-// Só deleta se nenhum livro usa a mídia
 router.delete(
   '/:id',
   validateObjectId('id'),

@@ -63,6 +63,42 @@ router.post(
   },
 )
 
+// ── PATCH /subgeneros/:id ─────────────────────────────────────────
+router.patch(
+  '/:id',
+  validateObjectId('id'),
+  authorize('subgeneros', 'update'),
+  validateCreateSubgenero,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const nome = req.body.nome.trim()
+      const slug = slugify(nome)
+
+      const conflict = await Subgenero.findOne({ slug, _id: { $ne: req.params.id } })
+      if (conflict) {
+        res.status(409).json({ error: `Sub-gênero "${conflict.nome}" já existe.` })
+        return
+      }
+
+      const subgenero = await Subgenero.findByIdAndUpdate(
+        req.params.id,
+        { nome, slug },
+        { new: true },
+      )
+      if (!subgenero) {
+        res.status(404).json({ error: 'Sub-gênero não encontrado.' })
+        return
+      }
+
+      console.log(`[PATCH /subgeneros/:id] "${subgenero.nome}" atualizado por ${req.user!.email}`)
+      res.json(subgenero)
+    } catch (err) {
+      console.error('[PATCH /subgeneros/:id]', err)
+      res.status(500).json({ error: 'Erro ao atualizar sub-gênero.' })
+    }
+  },
+)
+
 // ── DELETE /subgeneros/:id ────────────────────────────────────────
 router.delete(
   '/:id',

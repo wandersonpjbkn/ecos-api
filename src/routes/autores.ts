@@ -59,8 +59,39 @@ router.post(
   },
 )
 
+// ── PATCH /autores/:id ────────────────────────────────────────────
+router.patch(
+  '/:id',
+  validateObjectId('id'),
+  authorize('autores', 'update'),
+  validateCreateNamed,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const nome = req.body.nome.trim()
+      const slug = slugify(nome)
+
+      const conflict = await Autor.findOne({ slug, _id: { $ne: req.params.id } })
+      if (conflict) {
+        res.status(409).json({ error: `Autor "${conflict.nome}" já existe.` })
+        return
+      }
+
+      const autor = await Autor.findByIdAndUpdate(req.params.id, { nome, slug }, { new: true })
+      if (!autor) {
+        res.status(404).json({ error: 'Autor não encontrado.' })
+        return
+      }
+
+      console.log(`[PATCH /autores/:id] "${autor.nome}" atualizado por ${req.user!.email}`)
+      res.json(autor)
+    } catch (err) {
+      console.error('[PATCH /autores/:id]', err)
+      res.status(500).json({ error: 'Erro ao atualizar autor.' })
+    }
+  },
+)
+
 // ── DELETE /autores/:id ───────────────────────────────────────────
-// Só deleta se nenhum livro usa o autor
 router.delete(
   '/:id',
   validateObjectId('id'),
