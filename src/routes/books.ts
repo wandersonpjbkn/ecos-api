@@ -107,8 +107,8 @@ router.get('/:id', validateObjectId('id'), async (req: AuthRequest, res: Respons
 // ── POST /books ───────────────────────────────────────────────────
 router.post(
   '/',
-  authenticate,
   authRateLimit,
+  authenticate,
   authorize('books', 'create'),
   validateCreateBook,
   async (req: AuthRequest, res: Response) => {
@@ -133,9 +133,9 @@ router.post(
 // ── PUT /books/:id ───────────────────────────────────────────────
 router.put(
   '/:id',
+  authRateLimit,
   validateObjectId('id'),
   authenticate,
-  authRateLimit,
   authorize('books', 'update'),
   validateReplaceBook,
   async (req: AuthRequest, res: Response) => {
@@ -199,9 +199,9 @@ router.put(
 // ── PATCH /books/:id ──────────────────────────────────────────────
 router.patch(
   '/:id',
+  authRateLimit,
   validateObjectId('id'),
   authenticate,
-  authRateLimit,
   authorize('books', 'update'),
   validateUpdateBook,
   async (req: AuthRequest, res: Response) => {
@@ -268,9 +268,9 @@ router.patch(
 // ── POST /books/:id/enrich (preview) ─────────────────────────────
 router.post(
   '/:id/enrich',
+  authRateLimit,
   validateObjectId('id'),
   authenticate,
-  authRateLimit,
   enrichmentRateLimit,
   authorize('books', 'update'),
   async (req: AuthRequest, res: Response) => {
@@ -288,7 +288,10 @@ router.post(
         return
       }
 
-      const authorName = typeof book.autor === 'object' && book.autor && 'nome' in book.autor ? book.autor.nome : null
+      const authorName =
+        typeof book.autor === 'object' && book.autor && 'nome' in book.autor
+          ? book.autor.nome
+          : null
       if (!authorName) {
         res.status(400).json({ error: 'Livro sem autor válido para enriquecimento.' })
         return
@@ -323,24 +326,38 @@ router.post(
 // ── POST /books/:id/enrich/apply ─────────────────────────────────
 router.post(
   '/:id/enrich/apply',
+  authRateLimit,
   validateObjectId('id'),
   authenticate,
-  authRateLimit,
   enrichmentRateLimit,
   authorize('books', 'update'),
   async (req: AuthRequest, res: Response) => {
     try {
       const fields = req.body?.fields
-      const allowedFields = ['description', 'coverUrl', 'publisher', 'isbn', 'pageCount', 'publishedYear']
+      const allowedFields = [
+        'description',
+        'coverUrl',
+        'publisher',
+        'isbn',
+        'pageCount',
+        'publishedYear',
+      ]
 
-      if (!Array.isArray(fields) || fields.length === 0 || fields.some((field) => !allowedFields.includes(field))) {
+      if (
+        !Array.isArray(fields) ||
+        fields.length === 0 ||
+        fields.some((field) => !allowedFields.includes(field))
+      ) {
         res.status(400).json({
           error: `fields deve ser lista não-vazia com valores permitidos: ${allowedFields.join(', ')}.`,
         })
         return
       }
 
-      const book = await Book.findById(req.params.id).populate<{ autor: { nome: string } }>('autor', 'nome')
+      const book = await Book.findById(req.params.id).populate<{ autor: { nome: string } }>(
+        'autor',
+        'nome',
+      )
       if (!book) {
         res.status(404).json({ error: 'Livro não encontrado.' })
         return
@@ -357,7 +374,10 @@ router.post(
         return
       }
 
-      const authorName = typeof book.autor === 'object' && book.autor && 'nome' in book.autor ? book.autor.nome : null
+      const authorName =
+        typeof book.autor === 'object' && book.autor && 'nome' in book.autor
+          ? book.autor.nome
+          : null
       if (!authorName) {
         res.status(400).json({ error: 'Livro sem autor válido para enriquecimento.' })
         return
@@ -412,9 +432,9 @@ router.post(
 // ── DELETE /books/:id ─────────────────────────────────────────────
 router.delete(
   '/:id',
+  authRateLimit,
   validateObjectId('id'),
   authenticate,
-  authRateLimit,
   authorize('books', 'delete'),
   async (req: AuthRequest, res: Response) => {
     try {
