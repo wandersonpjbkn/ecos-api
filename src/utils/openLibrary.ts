@@ -38,7 +38,7 @@ interface OpenLibrarySearchResponse {
 
 const API_BASE = 'https://openlibrary.org/search.json'
 const COVER_BASE = 'https://covers.openlibrary.org/b'
-const OPEN_LIBRARY_USER_AGENT = 'EcosCatalog (wandersonpj.wpj@gmail.com)'
+const OPEN_LIBRARY_USER_AGENT = `${process.env.OPEN_LIBRARY_AGENT_LIB} (${process.env.OPEN_LIBRARY_AGENT_USER})`
 
 const fetchDoc = async (url: string): Promise<OpenLibraryDoc | null> => {
   const res = await fetch(url, {
