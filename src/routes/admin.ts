@@ -9,6 +9,7 @@ import { EnrichmentRun } from '@/models/EnrichmentRun.js'
 import type { AuthRequest } from '@/types/index.ts'
 import { fetchGoogleBooks } from '@/utils/googleBooks.js'
 import { handleDataError } from '@/utils/httpErrors.js'
+import { fetchOpenLibrary } from '@/utils/openLibrary.js'
 
 const router = Router()
 
@@ -55,7 +56,12 @@ router.post('/books/enrich', async (req: AuthRequest, res: Response) => {
       id: string
       titulo: string
       status: 'enriched' | 'not_found' | 'failed'
-      strategy?: 'isbn' | 'title_author_pt' | 'title_author'
+      strategy?:
+        | 'isbn'
+        | 'title_author_pt'
+        | 'title_author'
+        | 'openlibrary_isbn'
+        | 'openlibrary_title_author'
       cover_url?: string
       error?: string
     }> = []
@@ -82,7 +88,19 @@ router.post('/books/enrich', async (req: AuthRequest, res: Response) => {
         }
 
         const autorNome = (book.autor as unknown as { nome: string }).nome
-        const data = await fetchGoogleBooks(book.titulo, autorNome, book.isbn)
+
+        let data:
+          | Awaited<ReturnType<typeof fetchGoogleBooks>>
+          | Awaited<ReturnType<typeof fetchOpenLibrary>> = await fetchGoogleBooks(
+          book.titulo,
+          autorNome,
+          book.isbn,
+        )
+
+        if (!data) {
+          console.log(`[enrich] 🔁 Google Books sem resultado para "${book.titulo}". Tentando Open Library...`)
+          data = await fetchOpenLibrary(book.titulo, autorNome, book.isbn)
+        }
 
         if (!data) {
           skipped++

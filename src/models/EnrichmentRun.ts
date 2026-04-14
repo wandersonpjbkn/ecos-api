@@ -1,7 +1,12 @@
 import { Schema, model, type Types } from 'mongoose'
 
 type EnrichmentItemStatus = 'enriched' | 'not_found' | 'failed'
-type EnrichmentStrategy = 'isbn' | 'title_author_pt' | 'title_author'
+type EnrichmentStrategy =
+  | 'isbn'
+  | 'title_author_pt'
+  | 'title_author'
+  | 'openlibrary_isbn'
+  | 'openlibrary_title_author'
 
 interface EnrichmentRunItem {
   book_id: Types.ObjectId
@@ -31,7 +36,10 @@ const EnrichmentRunItemSchema = new Schema<EnrichmentRunItem>(
     book_id: { type: Schema.Types.ObjectId, ref: 'Book', required: true },
     titulo: { type: String, required: true },
     status: { type: String, enum: ['enriched', 'not_found', 'failed'], required: true },
-    strategy: { type: String, enum: ['isbn', 'title_author_pt', 'title_author'] },
+    strategy: {
+      type: String,
+      enum: ['isbn', 'title_author_pt', 'title_author', 'openlibrary_isbn', 'openlibrary_title_author'],
+    },
     cover_url: { type: String },
     error: { type: String },
   },
