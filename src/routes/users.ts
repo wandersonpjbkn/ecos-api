@@ -3,6 +3,7 @@ import type { Response } from 'express'
 
 import { authenticate } from '@/middleware/authenticate.js'
 import { authorize, adminOnly } from '@/middleware/authorize.js'
+import { authRateLimit, writeRateLimit } from '@/middleware/rateLimit.js'
 import { validateUpdateRole, validateObjectId } from '@/middleware/validate.js'
 import { Book } from '@/models/Book.js'
 import { ClaimHistory } from '@/models/ClaimHistory.js'
@@ -78,7 +79,7 @@ router.get('/me/claim', async (req: AuthRequest, res: Response) => {
 })
 
 // ── POST /users/me/claim ─────────────────────────────────────────
-router.post('/me/claim', async (req: AuthRequest, res: Response) => {
+router.post('/me/claim', authRateLimit, writeRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     const rawName = req.body?.quem_nome
     if (typeof rawName !== 'string' || rawName.trim().length === 0) {
@@ -175,7 +176,7 @@ router.post('/me/claim', async (req: AuthRequest, res: Response) => {
 })
 
 // ── DELETE /users/me/claim ───────────────────────────────────────
-router.delete('/me/claim', async (req: AuthRequest, res: Response) => {
+router.delete('/me/claim', authRateLimit, writeRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!
     const currentClaims = await getCurrentClaims(user._id.toString())
@@ -213,6 +214,8 @@ router.delete('/me/claim', async (req: AuthRequest, res: Response) => {
 // ── PATCH /users/:id/role ─────────────────────────────────────────
 router.patch(
   '/:id/role',
+  authRateLimit,
+  writeRateLimit,
   validateObjectId('id'),
   adminOnly,
   validateUpdateRole,
@@ -223,9 +226,16 @@ router.patch(
         return
       }
 
+      const rawRole = String(req.body.role).trim()
+      if (!['admin', 'editor', 'viewer'].includes(rawRole)) {
+        res.status(400).json({ error: 'role inválida.' })
+        return
+      }
+      const nextRole = rawRole as 'admin' | 'editor' | 'viewer'
+
       const user = await User.findByIdAndUpdate(
         req.params.id,
-        { role: req.body.role },
+        { role: nextRole },
         { new: true, select: '-supabase_uid' },
       )
 
@@ -244,7 +254,7 @@ router.patch(
 )
 
 // ── PATCH /users/me ───────────────────────────────────────────────
-router.patch('/me', async (req: AuthRequest, res: Response) => {
+router.patch('/me', authRateLimit, writeRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     const { name } = req.body
 

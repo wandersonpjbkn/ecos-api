@@ -1,6 +1,7 @@
 import { Router } from 'express'
 
 import { authenticate } from '@/middleware/authenticate.js'
+import { authRateLimit } from '@/middleware/rateLimit.js'
 import type { AuthRequest } from '@/types/index.ts'
 
 const router = Router()
@@ -12,7 +13,7 @@ const router = Router()
  *
  * O frontend chama este endpoint logo após o login no Supabase.
  */
-router.post('/verify', authenticate, (req: AuthRequest, res) => {
+router.post('/verify', authRateLimit, authenticate, (req: AuthRequest, res) => {
   res.json({ user: req.user })
 })
 

@@ -4,8 +4,9 @@ import type { Response } from 'express'
 import { ACTIONS, RESOURCES } from '@/constants/index.js'
 import { authenticate } from '@/middleware/authenticate.js'
 import { adminOnly } from '@/middleware/authorize.js'
+import { authRateLimit, writeRateLimit } from '@/middleware/rateLimit.js'
 import { Permission } from '@/models/Permission.js'
-import type { AuthRequest, Action } from '@/types/index.ts'
+import type { AuthRequest, Action, Role, Resource } from '@/types/index.ts'
 import { handleDataError } from '@/utils/httpErrors.js'
 
 const router = Router()
@@ -26,10 +27,10 @@ router.get('/', async (_req, res: Response) => {
 
 // ── PUT /permissions/:role/:resource ──────────────────────────────
 // Substitui as actions de uma combinação role+resource
-router.put('/:role/:resource', async (req: AuthRequest, res: Response) => {
+router.put('/:role/:resource', authRateLimit, writeRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     const { role, resource } = req.params
-    const { actions } = req.body
+    const { actions } = req.body as { actions?: unknown }
 
     // Validações
     if (!['admin', 'editor', 'viewer'].includes(role as string)) {
@@ -47,20 +48,24 @@ router.put('/:role/:resource', async (req: AuthRequest, res: Response) => {
       return
     }
 
+    const safeRole = role as Role
+    const safeResource = resource as Resource
+    const safeActions = [...new Set(actions.map((action) => String(action).trim() as Action))]
+
     // Admin não pode remover a própria permissão de leitura de permissions
-    if (role === 'admin' && resource === 'permissions' && !actions.includes('read')) {
+    if (safeRole === 'admin' && safeResource === 'permissions' && !safeActions.includes('read')) {
       res.status(400).json({ error: 'Admin deve manter leitura de permissions.' })
       return
     }
 
     const permission = await Permission.findOneAndUpdate(
-      { role, resource },
-      { actions },
+      { role: safeRole, resource: safeResource },
+      { actions: safeActions },
       { new: true, upsert: true },
     )
 
     console.log(
-      `[PUT /permissions] ${role}/${resource} → [${actions.join(', ')}] por ${req.user!.email}`,
+      `[PUT /permissions] ${safeRole}/${safeResource} → [${safeActions.join(', ')}] por ${req.user!.email}`,
     )
     res.json(permission)
   } catch (err) {
