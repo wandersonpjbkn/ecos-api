@@ -8,6 +8,7 @@ import { Book } from '@/models/Book.js'
 import { ClaimHistory } from '@/models/ClaimHistory.js'
 import { User } from '@/models/User.js'
 import type { AuthRequest } from '@/types/index.ts'
+import { handleDataError } from '@/utils/httpErrors.js'
 
 const router = Router()
 
@@ -36,7 +37,7 @@ router.get('/', authorize('users', 'read'), async (_req, res: Response) => {
     res.json(users)
   } catch (err) {
     console.error('[GET /users]', err)
-    res.status(500).json({ error: 'Erro ao buscar usuários.' })
+    handleDataError(res, err, 'Erro ao buscar usuários.')
   }
 })
 
@@ -72,7 +73,7 @@ router.get('/me/claim', async (req: AuthRequest, res: Response) => {
     })
   } catch (err) {
     console.error('[GET /users/me/claim]', err)
-    res.status(500).json({ error: 'Erro ao buscar claim atual.' })
+    handleDataError(res, err, 'Erro ao buscar claim atual.')
   }
 })
 
@@ -169,7 +170,7 @@ router.post('/me/claim', async (req: AuthRequest, res: Response) => {
     })
   } catch (err) {
     console.error('[POST /users/me/claim]', err)
-    res.status(500).json({ error: 'Erro ao realizar claim.' })
+    handleDataError(res, err, 'Erro ao realizar claim.')
   }
 })
 
@@ -205,7 +206,7 @@ router.delete('/me/claim', async (req: AuthRequest, res: Response) => {
     })
   } catch (err) {
     console.error('[DELETE /users/me/claim]', err)
-    res.status(500).json({ error: 'Erro ao desvincular claim.' })
+    handleDataError(res, err, 'Erro ao desvincular claim.')
   }
 })
 
@@ -237,7 +238,7 @@ router.patch(
       res.json(user)
     } catch (err) {
       console.error('[PATCH /users/:id/role]', err)
-      res.status(500).json({ error: 'Erro ao atualizar role.' })
+      handleDataError(res, err, 'Erro ao atualizar role.')
     }
   },
 )
@@ -266,7 +267,7 @@ router.patch('/me', async (req: AuthRequest, res: Response) => {
     res.json(user)
   } catch (err) {
     console.error('[PATCH /users/me]', err)
-    res.status(500).json({ error: 'Erro ao atualizar perfil.' })
+    handleDataError(res, err, 'Erro ao atualizar perfil.')
   }
 })
 

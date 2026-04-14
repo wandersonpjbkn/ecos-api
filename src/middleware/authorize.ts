@@ -2,6 +2,7 @@ import type { Response, NextFunction } from 'express'
 
 import { Permission } from '@/models/Permission.js'
 import type { AuthRequest, Resource, Action } from '@/types/index.ts'
+import { handleDataError } from '@/utils/httpErrors.js'
 
 /**
  * Fábrica de middleware de autorização.
@@ -33,7 +34,7 @@ export const authorize =
       next()
     } catch (err) {
       console.error('[authorize] Erro ao verificar permissões:', err)
-      res.status(500).json({ error: 'Erro ao verificar permissões.' })
+      handleDataError(res, err, 'Erro ao verificar permissões.')
     }
   }
 

@@ -6,6 +6,7 @@ import { authorize } from '@/middleware/authorize.js'
 import { validateCreateNamed, validateObjectId } from '@/middleware/validate.js'
 import { Categoria } from '@/models/Categoria.js'
 import type { AuthRequest } from '@/types/index.ts'
+import { handleDataError } from '@/utils/httpErrors.js'
 
 const router = Router()
 router.use(authenticate)
@@ -26,7 +27,7 @@ router.get('/', authorize('categorias', 'read'), async (_req, res: Response) => 
     res.json(await Categoria.find().sort({ nome: 1 }).lean())
   } catch (err) {
     console.error('[GET /categorias]', err)
-    res.status(500).json({ error: 'Erro ao buscar categorias.' })
+    handleDataError(res, err, 'Erro ao buscar categorias.')
   }
 })
 
@@ -49,7 +50,7 @@ router.post(
       res.status(201).json(categoria)
     } catch (err) {
       console.error('[POST /categorias]', err)
-      res.status(500).json({ error: 'Erro ao criar categoria.' })
+      handleDataError(res, err, 'Erro ao criar categoria.')
     }
   },
 )
@@ -85,7 +86,7 @@ router.patch(
       res.json(categoria)
     } catch (err) {
       console.error('[PATCH /categorias/:id]', err)
-      res.status(500).json({ error: 'Erro ao atualizar categoria.' })
+      handleDataError(res, err, 'Erro ao atualizar categoria.')
     }
   },
 )
@@ -111,7 +112,7 @@ router.delete(
       res.status(204).send()
     } catch (err) {
       console.error('[DELETE /categorias/:id]', err)
-      res.status(500).json({ error: 'Erro ao remover categoria.' })
+      handleDataError(res, err, 'Erro ao remover categoria.')
     }
   },
 )

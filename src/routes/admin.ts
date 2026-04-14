@@ -8,6 +8,7 @@ import { ClaimHistory } from '@/models/ClaimHistory.js'
 import { EnrichmentRun } from '@/models/EnrichmentRun.js'
 import type { AuthRequest } from '@/types/index.ts'
 import { fetchGoogleBooks } from '@/utils/googleBooks.js'
+import { handleDataError } from '@/utils/httpErrors.js'
 
 const router = Router()
 
@@ -153,7 +154,7 @@ router.post('/books/enrich', async (req: AuthRequest, res: Response) => {
     })
   } catch (err) {
     console.error('[POST /admin/books/enrich]', err)
-    res.status(500).json({ error: 'Erro ao executar enriquecimento.' })
+    handleDataError(res, err, 'Erro ao executar enriquecimento.')
   }
 })
 
@@ -178,7 +179,7 @@ router.get('/books/enrich/status', async (_req: AuthRequest, res: Response) => {
     })
   } catch (err) {
     console.error('[GET /admin/books/enrich/status]', err)
-    res.status(500).json({ error: 'Erro ao buscar status.' })
+    handleDataError(res, err, 'Erro ao buscar status.')
   }
 })
 
@@ -199,7 +200,7 @@ router.get('/books/enrich/history', async (req: AuthRequest, res: Response) => {
     res.json({ total_runs: history.length, history })
   } catch (err) {
     console.error('[GET /admin/books/enrich/history]', err)
-    res.status(500).json({ error: 'Erro ao buscar histórico de enriquecimentos.' })
+    handleDataError(res, err, 'Erro ao buscar histórico de enriquecimentos.')
   }
 })
 
@@ -220,7 +221,7 @@ router.get('/users/claims/history', async (req: AuthRequest, res: Response) => {
     res.json({ total: history.length, history })
   } catch (err) {
     console.error('[GET /admin/users/claims/history]', err)
-    res.status(500).json({ error: 'Erro ao buscar histórico de claims.' })
+    handleDataError(res, err, 'Erro ao buscar histórico de claims.')
   }
 })
 

@@ -4,6 +4,7 @@ import jwksClient from 'jwks-rsa'
 
 import { User } from '@/models/User.js'
 import type { AuthRequest, SupabaseJwtPayload } from '@/types/index.ts'
+import { handleDataError } from '@/utils/httpErrors.js'
 
 // ── JWKS client (singleton) ───────────────────────────────────────
 // Busca a chave pública do Supabase via endpoint JWKS e faz cache
@@ -93,6 +94,6 @@ export const authenticate = async (
     next()
   } catch (err) {
     console.error('[authenticate] Erro ao buscar usuário:', err)
-    res.status(500).json({ error: 'Erro interno de autenticação.' })
+    handleDataError(res, err, 'Erro interno de autenticação.')
   }
 }

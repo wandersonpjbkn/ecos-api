@@ -6,6 +6,7 @@ import { authenticate } from '@/middleware/authenticate.js'
 import { adminOnly } from '@/middleware/authorize.js'
 import { Permission } from '@/models/Permission.js'
 import type { AuthRequest, Action } from '@/types/index.ts'
+import { handleDataError } from '@/utils/httpErrors.js'
 
 const router = Router()
 
@@ -19,7 +20,7 @@ router.get('/', async (_req, res: Response) => {
     res.json(permissions)
   } catch (err) {
     console.error('[GET /permissions]', err)
-    res.status(500).json({ error: 'Erro ao buscar permissões.' })
+    handleDataError(res, err, 'Erro ao buscar permissões.')
   }
 })
 
@@ -64,7 +65,7 @@ router.put('/:role/:resource', async (req: AuthRequest, res: Response) => {
     res.json(permission)
   } catch (err) {
     console.error('[PUT /permissions/:role/:resource]', err)
-    res.status(500).json({ error: 'Erro ao atualizar permissão.' })
+    handleDataError(res, err, 'Erro ao atualizar permissão.')
   }
 })
 
