@@ -13,10 +13,10 @@ import { handleDataError } from '@/utils/httpErrors.js'
 
 const router = Router()
 
-router.use(authenticate, authRateLimit, adminOnly)
+router.use(authenticate, adminOnly)
 
 // ── POST /admin/books/enrich ──────────────────────────────────────
-router.post('/books/enrich', enrichmentRateLimit, async (req: AuthRequest, res: Response) => {
+router.post('/books/enrich', authRateLimit, enrichmentRateLimit, async (req: AuthRequest, res: Response) => {
   if (req.body?.force !== undefined && typeof req.body.force !== 'boolean') {
     res.status(400).json({ error: 'O campo "force" deve ser booleano.' })
     return
@@ -189,7 +189,7 @@ router.post('/books/enrich', enrichmentRateLimit, async (req: AuthRequest, res: 
 })
 
 // ── GET /admin/books/enrich/status ────────────────────────────────
-router.get('/books/enrich/status', async (_req: AuthRequest, res: Response) => {
+router.get('/books/enrich/status', authRateLimit, async (_req: AuthRequest, res: Response) => {
   try {
     const [total, withCover, lastEnriched] = await Promise.all([
       Book.countDocuments(),
@@ -214,7 +214,7 @@ router.get('/books/enrich/status', async (_req: AuthRequest, res: Response) => {
 })
 
 // ── GET /admin/books/enrich/history ───────────────────────────────
-router.get('/books/enrich/history', async (req: AuthRequest, res: Response) => {
+router.get('/books/enrich/history', authRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     const parsedLimit = Number(req.query.limit ?? 10)
     const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 50) : 10
@@ -235,7 +235,7 @@ router.get('/books/enrich/history', async (req: AuthRequest, res: Response) => {
 })
 
 // ── GET /admin/users/claims/history ──────────────────────────────
-router.get('/users/claims/history', async (req: AuthRequest, res: Response) => {
+router.get('/users/claims/history', authRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     const parsedLimit = Number(req.query.limit ?? 20)
     const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 100) : 20
