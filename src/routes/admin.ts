@@ -3,6 +3,7 @@ import type { Response } from 'express'
 
 import { authenticate } from '@/middleware/authenticate.js'
 import { adminOnly } from '@/middleware/authorize.js'
+import { authRateLimit, enrichmentRateLimit } from '@/middleware/rateLimit.js'
 import { Book } from '@/models/Book.js'
 import { ClaimHistory } from '@/models/ClaimHistory.js'
 import { EnrichmentRun } from '@/models/EnrichmentRun.js'
@@ -12,10 +13,10 @@ import { handleDataError } from '@/utils/httpErrors.js'
 
 const router = Router()
 
-router.use(authenticate, adminOnly)
+router.use(authenticate, authRateLimit, adminOnly)
 
 // ── POST /admin/books/enrich ──────────────────────────────────────
-router.post('/books/enrich', async (req: AuthRequest, res: Response) => {
+router.post('/books/enrich', enrichmentRateLimit, async (req: AuthRequest, res: Response) => {
   if (req.body?.force !== undefined && typeof req.body.force !== 'boolean') {
     res.status(400).json({ error: 'O campo "force" deve ser booleano.' })
     return

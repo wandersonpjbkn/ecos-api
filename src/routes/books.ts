@@ -3,6 +3,7 @@ import type { Response } from 'express'
 
 import { authenticate } from '@/middleware/authenticate.js'
 import { authorize } from '@/middleware/authorize.js'
+import { authRateLimit, enrichmentRateLimit } from '@/middleware/rateLimit.js'
 import {
   validateCreateBook,
   validateObjectId,
@@ -107,6 +108,7 @@ router.get('/:id', validateObjectId('id'), async (req: AuthRequest, res: Respons
 router.post(
   '/',
   authenticate,
+  authRateLimit,
   authorize('books', 'create'),
   validateCreateBook,
   async (req: AuthRequest, res: Response) => {
@@ -133,6 +135,7 @@ router.put(
   '/:id',
   validateObjectId('id'),
   authenticate,
+  authRateLimit,
   authorize('books', 'update'),
   validateReplaceBook,
   async (req: AuthRequest, res: Response) => {
@@ -198,6 +201,7 @@ router.patch(
   '/:id',
   validateObjectId('id'),
   authenticate,
+  authRateLimit,
   authorize('books', 'update'),
   validateUpdateBook,
   async (req: AuthRequest, res: Response) => {
@@ -266,6 +270,8 @@ router.post(
   '/:id/enrich',
   validateObjectId('id'),
   authenticate,
+  authRateLimit,
+  enrichmentRateLimit,
   authorize('books', 'update'),
   async (req: AuthRequest, res: Response) => {
     try {
@@ -319,6 +325,8 @@ router.post(
   '/:id/enrich/apply',
   validateObjectId('id'),
   authenticate,
+  authRateLimit,
+  enrichmentRateLimit,
   authorize('books', 'update'),
   async (req: AuthRequest, res: Response) => {
     try {
@@ -406,6 +414,7 @@ router.delete(
   '/:id',
   validateObjectId('id'),
   authenticate,
+  authRateLimit,
   authorize('books', 'delete'),
   async (req: AuthRequest, res: Response) => {
     try {
