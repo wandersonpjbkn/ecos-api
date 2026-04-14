@@ -7,9 +7,8 @@ import { Book } from '@/models/Book.js'
 import { ClaimHistory } from '@/models/ClaimHistory.js'
 import { EnrichmentRun } from '@/models/EnrichmentRun.js'
 import type { AuthRequest } from '@/types/index.ts'
-import { fetchGoogleBooks } from '@/utils/googleBooks.js'
+import { fetchEnrichmentPayload, getCoverSourceFromEnrichment } from '@/utils/enrichment.js'
 import { handleDataError } from '@/utils/httpErrors.js'
-import { fetchOpenLibrary } from '@/utils/openLibrary.js'
 
 const router = Router()
 
@@ -32,7 +31,7 @@ router.post('/books/enrich', async (req: AuthRequest, res: Response) => {
 
     const books = await Book.find(filter)
       .populate<{ autor: { nome: string } }>('autor', 'nome')
-      .select('titulo autor isbn cover_url enriched_at')
+      .select('titulo autor isbn cover_url enriched_at manually_edited_at')
       .lean()
 
     if (!books.length) {
@@ -55,7 +54,9 @@ router.post('/books/enrich', async (req: AuthRequest, res: Response) => {
     const results: Array<{
       id: string
       titulo: string
-      status: 'enriched' | 'not_found' | 'failed'
+      status: 'applied' | 'skipped' | 'failed'
+      source?: 'google_books' | 'open_library'
+      reason?: 'manual_edit' | 'not_found' | 'missing_author'
       strategy?:
         | 'isbn'
         | 'title_author_pt'
@@ -71,6 +72,17 @@ router.post('/books/enrich', async (req: AuthRequest, res: Response) => {
     let failed = 0
 
     for (const book of books) {
+      if (book.manually_edited_at) {
+        skipped++
+        results.push({
+          id: String(book._id),
+          titulo: book.titulo,
+          status: 'skipped',
+          reason: 'manual_edit',
+        })
+        continue
+      }
+
       if (results.length > 0) {
         await new Promise((r) => setTimeout(r, 200))
       }
@@ -83,40 +95,37 @@ router.post('/books/enrich', async (req: AuthRequest, res: Response) => {
         if (!autorPopulated) {
           console.warn(`[enrich] ⚠️  "${book.titulo}" sem autor populado — pulando`)
           skipped++
-          results.push({ id: String(book._id), titulo: book.titulo, status: 'not_found' })
+          results.push({ id: String(book._id), titulo: book.titulo, status: 'skipped', reason: 'missing_author' })
           continue
         }
 
         const autorNome = (book.autor as unknown as { nome: string }).nome
 
-        let data:
-          | Awaited<ReturnType<typeof fetchGoogleBooks>>
-          | Awaited<ReturnType<typeof fetchOpenLibrary>> = await fetchGoogleBooks(
-          book.titulo,
-          autorNome,
-          book.isbn,
-        )
+        const enrichment = await fetchEnrichmentPayload(book.titulo, autorNome, book.isbn)
 
-        if (!data) {
-          console.log(`[enrich] 🔁 Google Books sem resultado para "${book.titulo}". Tentando Open Library...`)
-          data = await fetchOpenLibrary(book.titulo, autorNome, book.isbn)
-        }
-
-        if (!data) {
+        if (!enrichment?.data) {
           skipped++
-          results.push({ id: String(book._id), titulo: book.titulo, status: 'not_found' })
+          results.push({ id: String(book._id), titulo: book.titulo, status: 'skipped', reason: 'not_found' })
           continue
         }
 
-        await Book.updateOne({ _id: book._id }, { $set: { ...data, enriched_at: new Date() } })
+        const updatePayload: Record<string, unknown> = {
+          ...enrichment.data,
+          enriched_at: new Date(),
+        }
+        if (enrichment.data.cover_url) {
+          updatePayload.cover_source = getCoverSourceFromEnrichment(enrichment.source)
+        }
+        await Book.updateOne({ _id: book._id }, { $set: updatePayload })
 
         enriched++
         results.push({
           id: String(book._id),
           titulo: book.titulo,
-          status: 'enriched',
-          strategy: data.strategy,
-          cover_url: data.cover_url,
+          status: 'applied',
+          source: enrichment.source,
+          strategy: enrichment.data.strategy,
+          cover_url: enrichment.data.cover_url,
         })
       } catch (err) {
         failed++
@@ -150,6 +159,8 @@ router.post('/books/enrich', async (req: AuthRequest, res: Response) => {
         book_id: r.id,
         titulo: r.titulo,
         status: r.status,
+        source: r.source,
+        reason: r.reason,
         strategy: r.strategy,
         cover_url: r.cover_url,
         error: r.error,
@@ -157,8 +168,8 @@ router.post('/books/enrich', async (req: AuthRequest, res: Response) => {
     })
 
     console.log(
-      `[POST /admin/books/enrich] Concluído: ${enriched} enriquecidos,` +
-        ` ${skipped} não encontrados, ${failed} com erro`,
+      `[POST /admin/books/enrich] Concluído: ${enriched} aplicados,` +
+        ` ${skipped} ignorados, ${failed} com erro`,
     )
 
     res.json({

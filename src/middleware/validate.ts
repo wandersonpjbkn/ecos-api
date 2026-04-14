@@ -3,6 +3,7 @@ import type { AuthRequest } from '@/types/index.ts'
 
 const isString = (v: unknown): v is string => typeof v === 'string' && v.trim().length > 0
 const isObjectId = (v: unknown): boolean => typeof v === 'string' && /^[a-f\d]{24}$/i.test(v)
+const isOptionalString = (v: unknown): boolean => v === undefined || v === null || typeof v === 'string'
 
 // ── Books ─────────────────────────────────────────────────────────
 
@@ -43,6 +44,18 @@ export const validateUpdateBook = (req: AuthRequest, res: Response, next: NextFu
     'quem_nome',
     'porque',
     'isbn',
+    'cover_url',
+    'cover_source',
+    'synopsis',
+    'publisher',
+    'page_count',
+    'published_year',
+    'google_books_id',
+    'description',
+    'coverUrl',
+    'coverSource',
+    'pageCount',
+    'publishedYear',
   ]
 
   const unknown = Object.keys(req.body).filter((k) => !allowed.includes(k))
@@ -58,7 +71,55 @@ export const validateUpdateBook = (req: AuthRequest, res: Response, next: NextFu
     }
   }
 
+  if (req.body.subgeneros !== undefined) {
+    if (!Array.isArray(req.body.subgeneros) || req.body.subgeneros.some((id: unknown) => !isObjectId(id))) {
+      res.status(400).json({ error: 'subgeneros deve ser uma lista de ObjectIds válidos.' })
+      return
+    }
+  }
+
+  if (req.body.cover_source !== undefined && !['manual', 'google', 'openlibrary'].includes(req.body.cover_source)) {
+    res.status(400).json({ error: 'cover_source deve ser manual, google ou openlibrary.' })
+    return
+  }
+
+  if (req.body.coverSource !== undefined && !['manual', 'google', 'openlibrary'].includes(req.body.coverSource)) {
+    res.status(400).json({ error: 'coverSource deve ser manual, google ou openlibrary.' })
+    return
+  }
+
+  if (!isOptionalString(req.body.cover_url) || !isOptionalString(req.body.coverUrl)) {
+    res.status(400).json({ error: 'cover_url/coverUrl deve ser string.' })
+    return
+  }
+
+  if (!isOptionalString(req.body.synopsis) || !isOptionalString(req.body.description)) {
+    res.status(400).json({ error: 'synopsis/description deve ser string.' })
+    return
+  }
+
   next()
+}
+
+export const validateReplaceBook = (req: AuthRequest, res: Response, next: NextFunction): void => {
+  const requiredObjectIds = ['autor', 'categoria', 'midia']
+  const requiredStrings = ['titulo', 'quem_nome']
+
+  for (const field of requiredStrings) {
+    if (!isString(req.body[field])) {
+      res.status(400).json({ error: `${field} é obrigatório.` })
+      return
+    }
+  }
+
+  for (const field of requiredObjectIds) {
+    if (!isObjectId(req.body[field])) {
+      res.status(400).json({ error: `${field} deve ser um ObjectId válido.` })
+      return
+    }
+  }
+
+  validateUpdateBook(req, res, next)
 }
 
 // ── Users ─────────────────────────────────────────────────────────

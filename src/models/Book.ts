@@ -16,11 +16,14 @@ export interface IBook {
   // Enriquecimento (Google Books / Open Library fallback)
   isbn?: string
   cover_url?: string
+  cover_source?: 'manual' | 'google' | 'openlibrary'
   synopsis?: string
+  publisher?: string
   page_count?: number
   published_year?: number
   google_books_id?: string
   enriched_at?: Date
+  manually_edited_at?: Date | null
 
   edit_history: EditHistoryEntry[]
 }
@@ -50,11 +53,14 @@ const BookSchema = new Schema<IBook>(
 
     isbn: { type: String },
     cover_url: { type: String },
+    cover_source: { type: String, enum: ['manual', 'google', 'openlibrary'] },
     synopsis: { type: String },
+    publisher: { type: String },
     page_count: { type: Number },
     published_year: { type: Number },
     google_books_id: { type: String },
     enriched_at: { type: Date },
+    manually_edited_at: { type: Date, default: null },
 
     edit_history: { type: [EditHistorySchema], default: [] },
   },

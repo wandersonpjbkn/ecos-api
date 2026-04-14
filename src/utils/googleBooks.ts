@@ -16,6 +16,7 @@ interface GoogleBooksResult {
   google_books_id: string
   cover_url?: string
   synopsis?: string
+  publisher?: string
   isbn?: string
   page_count?: number
   published_year?: number
@@ -34,6 +35,7 @@ interface GoogleBooksVolume {
     industryIdentifiers?: Array<{ type: string; identifier: string }>
     pageCount?: number
     publishedDate?: string
+    publisher?: string
   }
 }
 
@@ -134,6 +136,7 @@ const extractResult = (volume: GoogleBooksVolume, strategy: GoogleBooksStrategy)
     google_books_id: volume.id,
     cover_url,
     synopsis: info.description ?? undefined,
+    publisher: info.publisher ?? undefined,
     isbn,
     page_count: info.pageCount ?? undefined,
     published_year,
