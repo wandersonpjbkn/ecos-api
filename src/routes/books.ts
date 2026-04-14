@@ -17,6 +17,20 @@ import { handleDataError } from '@/utils/httpErrors.js'
 
 const router = Router()
 
+const ENRICHMENT_FIELDS = new Set([
+  'cover_url',
+  'cover_source',
+  'synopsis',
+  'publisher',
+  'isbn',
+  'page_count',
+  'published_year',
+  'google_books_id',
+])
+
+const hasEnrichmentEdit = (payload: Record<string, unknown>): boolean =>
+  Object.keys(payload).some((k) => ENRICHMENT_FIELDS.has(k))
+
 const normalizeBookInput = (body: Record<string, unknown>): Record<string, unknown> => {
   const normalized = { ...body }
 
@@ -24,22 +38,18 @@ const normalizeBookInput = (body: Record<string, unknown>): Record<string, unkno
     normalized.cover_url = normalized.coverUrl
     delete normalized.coverUrl
   }
-
   if (normalized.coverSource !== undefined) {
     normalized.cover_source = normalized.coverSource
     delete normalized.coverSource
   }
-
   if (normalized.description !== undefined) {
     normalized.synopsis = normalized.description
     delete normalized.description
   }
-
   if (normalized.pageCount !== undefined) {
     normalized.page_count = normalized.pageCount
     delete normalized.pageCount
   }
-
   if (normalized.publishedYear !== undefined) {
     normalized.published_year = normalized.publishedYear
     delete normalized.publishedYear
@@ -57,7 +67,6 @@ const ensureCanEdit = (req: AuthRequest, res: Response, ownerUserId?: string): b
     res.status(403).json({ error: 'Você só pode editar suas próprias indicações.' })
     return false
   }
-
   return true
 }
 
@@ -114,12 +123,7 @@ router.post(
   async (req: AuthRequest, res: Response) => {
     try {
       const payload = normalizeBookInput(req.body)
-
-      const book = await Book.create({
-        ...payload,
-        added_by: req.user!._id,
-        edit_history: [],
-      })
+      const book = await Book.create({ ...payload, added_by: req.user!._id, edit_history: [] })
 
       console.log(`[POST /books] "${book.titulo}" criado por ${req.user!.email}`)
       res.status(201).json(book)
@@ -130,7 +134,7 @@ router.post(
   },
 )
 
-// ── PUT /books/:id ───────────────────────────────────────────────
+// ── PUT /books/:id ────────────────────────────────────────────────
 router.put(
   '/:id',
   authRateLimit,
@@ -146,9 +150,7 @@ router.put(
         return
       }
 
-      if (!ensureCanEdit(req, res, book.quem_user_id?.toString())) {
-        return
-      }
+      if (!ensureCanEdit(req, res, book.quem_user_id?.toString())) return
 
       const payload = normalizeBookInput(req.body)
       const user = req.user!
@@ -182,10 +184,9 @@ router.put(
       }
 
       Object.assign(book, payload)
-      book.manually_edited_at = now
-      if (payload.cover_url !== undefined) {
-        book.cover_source = 'manual'
-      }
+
+      if (hasEnrichmentEdit(payload)) book.manually_edited_at = now
+      if (payload.cover_url !== undefined) book.cover_source = 'manual'
 
       await book.save()
       res.json(book)
@@ -212,14 +213,11 @@ router.patch(
         return
       }
 
-      if (!ensureCanEdit(req, res, book.quem_user_id?.toString())) {
-        return
-      }
+      if (!ensureCanEdit(req, res, book.quem_user_id?.toString())) return
 
       const user = req.user!
       const now = new Date()
       const payload = normalizeBookInput(req.body)
-
       const trackable = [
         'titulo',
         'autor',
@@ -249,10 +247,9 @@ router.patch(
       }
 
       Object.assign(book, payload)
-      book.manually_edited_at = now
-      if (payload.cover_url !== undefined) {
-        book.cover_source = 'manual'
-      }
+
+      if (hasEnrichmentEdit(payload)) book.manually_edited_at = now
+      if (payload.cover_url !== undefined) book.cover_source = 'manual'
 
       await book.save()
 
@@ -284,9 +281,7 @@ router.post(
         return
       }
 
-      if (!ensureCanEdit(req, res, book.quem_user_id?.toString())) {
-        return
-      }
+      if (!ensureCanEdit(req, res, book.quem_user_id?.toString())) return
 
       const authorName =
         typeof book.autor === 'object' && book.autor && 'nome' in book.autor
@@ -363,9 +358,7 @@ router.post(
         return
       }
 
-      if (!ensureCanEdit(req, res, book.quem_user_id?.toString())) {
-        return
-      }
+      if (!ensureCanEdit(req, res, book.quem_user_id?.toString())) return
 
       if (book.manually_edited_at) {
         res.status(409).json({
@@ -400,9 +393,7 @@ router.post(
 
       const payload: Record<string, unknown> = {}
       for (const field of fields) {
-        if (applyMap[field] !== undefined) {
-          payload[field] = applyMap[field]
-        }
+        if (applyMap[field] !== undefined) payload[field] = applyMap[field]
       }
 
       const normalizedPayload = normalizeBookInput(payload)

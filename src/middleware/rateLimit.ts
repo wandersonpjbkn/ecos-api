@@ -1,4 +1,4 @@
-import rateLimit from 'express-rate-limit'
+import rateLimit from '@/vendor/expressRateLimit.js'
 
 export const authRateLimit = rateLimit({
   windowMs: 60_000,
@@ -21,5 +21,7 @@ export const enrichmentRateLimit = rateLimit({
   max: 20,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
-  message: { error: 'Muitas tentativas de enriquecimento. Aguarde alguns segundos e tente novamente.' },
+  message: {
+    error: 'Muitas tentativas de enriquecimento. Aguarde alguns segundos e tente novamente.',
+  },
 })
