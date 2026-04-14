@@ -6,6 +6,7 @@ import { authorize } from '@/middleware/authorize.js'
 import { validateCreateBook, validateUpdateBook, validateObjectId } from '@/middleware/validate.js'
 import { Book } from '@/models/Book.js'
 import type { AuthRequest } from '@/types/index.ts'
+import { handleDataError } from '@/utils/httpErrors.js'
 
 const router = Router()
 
@@ -24,7 +25,7 @@ router.get('/', async (_req, res: Response) => {
     res.json(books)
   } catch (err) {
     console.error('[GET /books]', err)
-    res.status(500).json({ error: 'Erro ao buscar livros.' })
+    handleDataError(res, err, 'Erro ao buscar livros.')
   }
 })
 
@@ -48,7 +49,7 @@ router.get('/:id', validateObjectId('id'), async (req: AuthRequest, res: Respons
     res.json(book)
   } catch (err) {
     console.error('[GET /books/:id]', err)
-    res.status(500).json({ error: 'Erro ao buscar livro.' })
+    handleDataError(res, err, 'Erro ao buscar livro.')
   }
 })
 
@@ -70,7 +71,7 @@ router.post(
       res.status(201).json(book)
     } catch (err) {
       console.error('[POST /books]', err)
-      res.status(500).json({ error: 'Erro ao criar livro.' })
+      handleDataError(res, err, 'Erro ao criar livro.')
     }
   },
 )
@@ -121,7 +122,7 @@ router.patch(
       res.json(book)
     } catch (err) {
       console.error('[PATCH /books/:id]', err)
-      res.status(500).json({ error: 'Erro ao atualizar livro.' })
+      handleDataError(res, err, 'Erro ao atualizar livro.')
     }
   },
 )
@@ -144,7 +145,7 @@ router.delete(
       res.status(204).send()
     } catch (err) {
       console.error('[DELETE /books/:id]', err)
-      res.status(500).json({ error: 'Erro ao remover livro.' })
+      handleDataError(res, err, 'Erro ao remover livro.')
     }
   },
 )

@@ -28,7 +28,8 @@ export interface IBook {
 const EditHistorySchema = new Schema<EditHistoryEntry>(
   {
     field: { type: String, required: true },
-    previous_value: { type: String, required: true },
+    // Pode ficar vazio quando o campo não existia antes (ex.: primeiro ISBN adicionado)
+    previous_value: { type: String, default: '' },
     edited_at: { type: Date, required: true },
     edited_by: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   },
