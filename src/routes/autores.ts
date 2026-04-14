@@ -6,6 +6,7 @@ import { authorize } from '@/middleware/authorize.js'
 import { validateCreateNamed, validateObjectId } from '@/middleware/validate.js'
 import { Autor } from '@/models/Autor.js'
 import type { AuthRequest } from '@/types/index.ts'
+import { handleDataError } from '@/utils/httpErrors.js'
 
 const router = Router()
 
@@ -28,7 +29,7 @@ router.get('/', authorize('autores', 'read'), async (_req, res: Response) => {
     res.json(autores)
   } catch (err) {
     console.error('[GET /autores]', err)
-    res.status(500).json({ error: 'Erro ao buscar autores.' })
+    handleDataError(res, err, 'Erro ao buscar autores.')
   }
 })
 
@@ -54,7 +55,7 @@ router.post(
       res.status(201).json(autor)
     } catch (err) {
       console.error('[POST /autores]', err)
-      res.status(500).json({ error: 'Erro ao criar autor.' })
+      handleDataError(res, err, 'Erro ao criar autor.')
     }
   },
 )
@@ -86,7 +87,7 @@ router.patch(
       res.json(autor)
     } catch (err) {
       console.error('[PATCH /autores/:id]', err)
-      res.status(500).json({ error: 'Erro ao atualizar autor.' })
+      handleDataError(res, err, 'Erro ao atualizar autor.')
     }
   },
 )
@@ -117,7 +118,7 @@ router.delete(
       res.status(204).send()
     } catch (err) {
       console.error('[DELETE /autores/:id]', err)
-      res.status(500).json({ error: 'Erro ao remover autor.' })
+      handleDataError(res, err, 'Erro ao remover autor.')
     }
   },
 )

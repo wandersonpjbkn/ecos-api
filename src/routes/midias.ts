@@ -6,6 +6,7 @@ import { authorize } from '@/middleware/authorize.js'
 import { validateCreateNamed, validateObjectId } from '@/middleware/validate.js'
 import { Midia } from '@/models/Midia.js'
 import type { AuthRequest } from '@/types/index.ts'
+import { handleDataError } from '@/utils/httpErrors.js'
 
 const router = Router()
 
@@ -28,7 +29,7 @@ router.get('/', authorize('midias', 'read'), async (_req, res: Response) => {
     res.json(midias)
   } catch (err) {
     console.error('[GET /midias]', err)
-    res.status(500).json({ error: 'Erro ao buscar mídias.' })
+    handleDataError(res, err, 'Erro ao buscar mídias.')
   }
 })
 
@@ -54,7 +55,7 @@ router.post(
       res.status(201).json(midia)
     } catch (err) {
       console.error('[POST /midias]', err)
-      res.status(500).json({ error: 'Erro ao criar mídia.' })
+      handleDataError(res, err, 'Erro ao criar mídia.')
     }
   },
 )
@@ -86,7 +87,7 @@ router.patch(
       res.json(midia)
     } catch (err) {
       console.error('[PATCH /midias/:id]', err)
-      res.status(500).json({ error: 'Erro ao atualizar mídia.' })
+      handleDataError(res, err, 'Erro ao atualizar mídia.')
     }
   },
 )
@@ -117,7 +118,7 @@ router.delete(
       res.status(204).send()
     } catch (err) {
       console.error('[DELETE /midias/:id]', err)
-      res.status(500).json({ error: 'Erro ao remover mídia.' })
+      handleDataError(res, err, 'Erro ao remover mídia.')
     }
   },
 )

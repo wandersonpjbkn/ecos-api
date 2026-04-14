@@ -6,6 +6,7 @@ import { authorize } from '@/middleware/authorize.js'
 import { validateCreateSubgenero, validateObjectId } from '@/middleware/validate.js'
 import { Subgenero } from '@/models/Subgenero.js'
 import type { AuthRequest } from '@/types/index.ts'
+import { handleDataError } from '@/utils/httpErrors.js'
 
 const router = Router()
 
@@ -28,7 +29,7 @@ router.get('/', authorize('subgeneros', 'read'), async (_req, res: Response) => 
     res.json(subgeneros)
   } catch (err) {
     console.error('[GET /subgeneros]', err)
-    res.status(500).json({ error: 'Erro ao buscar sub-gêneros.' })
+    handleDataError(res, err, 'Erro ao buscar sub-gêneros.')
   }
 })
 
@@ -58,7 +59,7 @@ router.post(
       res.status(201).json(subgenero)
     } catch (err) {
       console.error('[POST /subgeneros]', err)
-      res.status(500).json({ error: 'Erro ao criar sub-gênero.' })
+      handleDataError(res, err, 'Erro ao criar sub-gênero.')
     }
   },
 )
@@ -94,7 +95,7 @@ router.patch(
       res.json(subgenero)
     } catch (err) {
       console.error('[PATCH /subgeneros/:id]', err)
-      res.status(500).json({ error: 'Erro ao atualizar sub-gênero.' })
+      handleDataError(res, err, 'Erro ao atualizar sub-gênero.')
     }
   },
 )
@@ -116,7 +117,7 @@ router.delete(
       res.status(204).send()
     } catch (err) {
       console.error('[DELETE /subgeneros/:id]', err)
-      res.status(500).json({ error: 'Erro ao remover sub-gênero.' })
+      handleDataError(res, err, 'Erro ao remover sub-gênero.')
     }
   },
 )
