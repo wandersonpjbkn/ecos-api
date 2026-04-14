@@ -10,7 +10,8 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "express-rate-limit": ["./src/vendor/expressRateLimit.ts"]
     }
   },
   "include": ["src/**/*.ts"],

@@ -15,6 +15,7 @@ export interface OpenLibraryResult {
   google_books_id: string
   cover_url?: string
   synopsis?: string
+  publisher?: string
   isbn?: string
   page_count?: number
   published_year?: number
@@ -29,6 +30,7 @@ interface OpenLibraryDoc {
   number_of_pages_median?: number
   first_publish_year?: number
   edition_key?: string[]
+  publisher?: string[]
 }
 
 interface OpenLibrarySearchResponse {
@@ -75,6 +77,7 @@ const extractResult = (doc: OpenLibraryDoc, strategy: OpenLibraryStrategy): Open
     google_books_id: `openlibrary:${openLibraryId}`,
     cover_url,
     synopsis: toSynopsis(doc.first_sentence),
+    publisher: doc.publisher?.[0],
     isbn,
     page_count: doc.number_of_pages_median,
     published_year: doc.first_publish_year,
