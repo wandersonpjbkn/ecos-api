@@ -6,21 +6,12 @@ import { authorize } from '@/middleware/authorize.js'
 import { validateCreateSubgenero, validateObjectId } from '@/middleware/validate.js'
 import { Subgenero } from '@/models/Subgenero.js'
 import type { AuthRequest } from '@/types/index.ts'
+import { slugify } from '@/utils/global.js'
 import { handleDataError } from '@/utils/httpErrors.js'
 
 const router = Router()
 
 router.use(authenticate)
-
-const slugify = (value: string): string =>
-  value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/-{2,}/g, '-')
 
 // ── GET /subgeneros ───────────────────────────────────────────────
 router.get('/', authorize('subgeneros', 'read'), async (_req, res: Response) => {

@@ -4,7 +4,11 @@ import type { Response } from 'express'
 import { authenticate } from '@/middleware/authenticate.js'
 import { authorize, adminOnly } from '@/middleware/authorize.js'
 import { authRateLimit, writeRateLimit } from '@/middleware/rateLimit.js'
-import { validateUpdateRole, validateObjectId } from '@/middleware/validate.js'
+import {
+  validateUpdateRole,
+  validateObjectId,
+  validateMemberUpdateBook,
+} from '@/middleware/validate.js'
 import { Book } from '@/models/Book.js'
 import { ClaimHistory } from '@/models/ClaimHistory.js'
 import { User } from '@/models/User.js'
@@ -206,6 +210,69 @@ router.delete(
     } catch (err) {
       console.error('[DELETE /users/me/claim]', err)
       handleDataError(res, err, 'Erro ao desvincular claim.')
+    }
+  },
+)
+
+// ── PATCH /users/me/books/:id ─────────────────────────────────────
+router.patch(
+  '/me/books/:id',
+  authRateLimit,
+  writeRateLimit,
+  validateObjectId('id'),
+  validateMemberUpdateBook,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const book = await Book.findById(req.params.id)
+
+      if (!book) {
+        res.status(404).json({ error: 'Livro não encontrado.' })
+        return
+      }
+
+      if (!book.quem_user_id || book.quem_user_id.toString() !== req.user!._id.toString()) {
+        res.status(403).json({ error: 'Você só pode editar livros vinculados ao seu perfil.' })
+        return
+      }
+
+      const user = req.user!
+      const now = new Date()
+      const trackable = [
+        'titulo',
+        'autor',
+        'categoria',
+        'midia',
+        'subgeneros',
+        'porque',
+        'synopsis',
+      ] as const
+
+      for (const field of trackable) {
+        if (req.body[field] !== undefined && String(req.body[field]) !== String(book[field])) {
+          book.edit_history.push({
+            field,
+            previous_value: String(book[field] ?? ''),
+            edited_at: now,
+            edited_by: user._id,
+          })
+        }
+      }
+
+      if (req.body.titulo !== undefined) book.titulo = req.body.titulo
+      if (req.body.autor !== undefined) book.autor = req.body.autor
+      if (req.body.categoria !== undefined) book.categoria = req.body.categoria
+      if (req.body.midia !== undefined) book.midia = req.body.midia
+      if (req.body.subgeneros !== undefined) book.subgeneros = req.body.subgeneros
+      if (req.body.porque !== undefined) book.porque = req.body.porque
+      if (req.body.synopsis !== undefined) book.synopsis = req.body.synopsis
+
+      await book.save()
+
+      console.log(`[PATCH /users/me/books/:id] "${book.titulo}" editado por ${user.email}`)
+      res.json(book)
+    } catch (err) {
+      console.error('[PATCH /users/me/books/:id]', err)
+      handleDataError(res, err, 'Erro ao atualizar livro.')
     }
   },
 )

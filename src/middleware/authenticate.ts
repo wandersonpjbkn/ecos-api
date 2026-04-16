@@ -6,8 +6,6 @@ import { User } from '@/models/User.js'
 import type { AuthRequest, SupabaseJwtPayload } from '@/types/index.ts'
 import { handleDataError } from '@/utils/httpErrors.js'
 
-// ── JWKS client (singleton) ───────────────────────────────────────
-// Busca a chave pública do Supabase via endpoint JWKS e faz cache
 const client = jwksClient({
   jwksUri: `${process.env.SUPABASE_URL}/auth/v1/.well-known/jwks.json`,
   cache: true,
@@ -23,7 +21,6 @@ const getSigningKey = (kid: string): Promise<string> =>
     })
   })
 
-// ── Middleware ────────────────────────────────────────────────────
 export const authenticate = async (
   req: AuthRequest,
   res: Response,
@@ -47,13 +44,11 @@ export const authenticate = async (
   let payload: SupabaseJwtPayload
 
   try {
-    // Decodifica o header do JWT para obter o kid (key ID)
     const decoded = jwt.decode(token, { complete: true })
     if (!decoded || typeof decoded === 'string') throw new Error('Token malformado')
 
     const kid = decoded.header.kid as string | undefined
 
-    // Busca a chave pública correspondente no JWKS do Supabase
     const publicKey = await getSigningKey(kid ?? '')
 
     payload = jwt.verify(token, publicKey, {

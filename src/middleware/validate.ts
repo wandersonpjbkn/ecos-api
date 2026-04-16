@@ -3,7 +3,8 @@ import type { AuthRequest } from '@/types/index.ts'
 
 const isString = (v: unknown): v is string => typeof v === 'string' && v.trim().length > 0
 const isObjectId = (v: unknown): boolean => typeof v === 'string' && /^[a-f\d]{24}$/i.test(v)
-const isOptionalString = (v: unknown): boolean => v === undefined || v === null || typeof v === 'string'
+const isOptionalString = (v: unknown): boolean =>
+  v === undefined || v === null || typeof v === 'string'
 
 // ── Books ─────────────────────────────────────────────────────────
 
@@ -72,18 +73,27 @@ export const validateUpdateBook = (req: AuthRequest, res: Response, next: NextFu
   }
 
   if (req.body.subgeneros !== undefined) {
-    if (!Array.isArray(req.body.subgeneros) || req.body.subgeneros.some((id: unknown) => !isObjectId(id))) {
+    if (
+      !Array.isArray(req.body.subgeneros) ||
+      req.body.subgeneros.some((id: unknown) => !isObjectId(id))
+    ) {
       res.status(400).json({ error: 'subgeneros deve ser uma lista de ObjectIds válidos.' })
       return
     }
   }
 
-  if (req.body.cover_source !== undefined && !['manual', 'google', 'openlibrary'].includes(req.body.cover_source)) {
+  if (
+    req.body.cover_source !== undefined &&
+    !['manual', 'google', 'openlibrary'].includes(req.body.cover_source)
+  ) {
     res.status(400).json({ error: 'cover_source deve ser manual, google ou openlibrary.' })
     return
   }
 
-  if (req.body.coverSource !== undefined && !['manual', 'google', 'openlibrary'].includes(req.body.coverSource)) {
+  if (
+    req.body.coverSource !== undefined &&
+    !['manual', 'google', 'openlibrary'].includes(req.body.coverSource)
+  ) {
     res.status(400).json({ error: 'coverSource deve ser manual, google ou openlibrary.' })
     return
   }
@@ -134,7 +144,6 @@ export const validateUpdateRole = (req: AuthRequest, res: Response, next: NextFu
 }
 
 // ── Entidades de catálogo (Autor, Midia, Categoria, Subgenero) ────
-// Validação compartilhada — só nome obrigatório, máx 60 chars
 
 export const validateCreateNamed = (req: AuthRequest, res: Response, next: NextFunction): void => {
   const { nome } = req.body
@@ -149,7 +158,6 @@ export const validateCreateNamed = (req: AuthRequest, res: Response, next: NextF
   next()
 }
 
-// Mantido por compatibilidade com importações existentes em subgeneros.ts
 export const validateCreateSubgenero = validateCreateNamed
 
 // ── Params ────────────────────────────────────────────────────────
@@ -163,3 +171,53 @@ export const validateObjectId =
     }
     next()
   }
+
+// ── Member book update (campos da menção original) ────────────────
+
+export const validateMemberUpdateBook = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+): void => {
+  const ALLOWED = ['titulo', 'autor', 'categoria', 'midia', 'subgeneros', 'porque', 'synopsis']
+
+  const unknown = Object.keys(req.body).filter((k) => !ALLOWED.includes(k))
+  if (unknown.length > 0) {
+    res.status(400).json({ error: `Campos não permitidos: ${unknown.join(', ')}.` })
+    return
+  }
+
+  if (req.body.titulo !== undefined && !isString(req.body.titulo)) {
+    res.status(400).json({ error: 'titulo é obrigatório e deve ser uma string não-vazia.' })
+    return
+  }
+
+  for (const field of ['autor', 'categoria', 'midia'] as const) {
+    if (req.body[field] !== undefined && !isObjectId(req.body[field])) {
+      res.status(400).json({ error: `${field} deve ser um ObjectId válido.` })
+      return
+    }
+  }
+
+  if (req.body.subgeneros !== undefined) {
+    if (
+      !Array.isArray(req.body.subgeneros) ||
+      req.body.subgeneros.some((id: unknown) => !isObjectId(id))
+    ) {
+      res.status(400).json({ error: 'subgeneros deve ser uma lista de ObjectIds válidos.' })
+      return
+    }
+  }
+
+  if (req.body.porque !== undefined && !isOptionalString(req.body.porque)) {
+    res.status(400).json({ error: 'porque deve ser uma string.' })
+    return
+  }
+
+  if (req.body.synopsis !== undefined && !isOptionalString(req.body.synopsis)) {
+    res.status(400).json({ error: 'synopsis deve ser uma string.' })
+    return
+  }
+
+  next()
+}

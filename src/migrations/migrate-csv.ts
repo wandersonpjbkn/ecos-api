@@ -32,6 +32,7 @@ import { Categoria } from '@/models/Categoria.js'
 import { Midia } from '@/models/Midia.js'
 import { Subgenero } from '@/models/Subgenero.js'
 import { User } from '@/models/User.js'
+import { slugify } from '@/utils/global.js'
 import { seedPermissions } from '@/utils/seed.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -47,16 +48,6 @@ const SYSTEM_USER = {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────
-
-const slugify = (value: string): string =>
-  value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/-{2,}/g, '-')
 
 /** Upsert genérico para entidades com nome+slug+created_by */
 const upsertNamed = async (

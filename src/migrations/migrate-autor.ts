@@ -14,16 +14,7 @@ import mongoose from 'mongoose'
 import { connectDB } from '@/config/db.js'
 import { Autor } from '@/models/Autor.js'
 import { User } from '@/models/User.js'
-
-const slugify = (value: string): string =>
-  value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/-{2,}/g, '-')
+import { slugify } from '@/utils/global.js'
 
 const run = async () => {
   console.log('🚀 Iniciando migração de autor...\n')
