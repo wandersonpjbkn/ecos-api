@@ -25,3 +25,11 @@ export const enrichmentRateLimit = rateLimit({
     error: 'Muitas tentativas de enriquecimento. Aguarde alguns segundos e tente novamente.',
   },
 })
+
+export const keepAliveRateLimit = rateLimit({
+  windowMs: 60_000,
+  max: 10,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Muitas requisições. Tente novamente em instantes.' },
+})

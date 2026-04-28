@@ -14,6 +14,7 @@ import midiaRoutes from '@/routes/midias.js'
 import permissionRoutes from '@/routes/permissions.js'
 import subgeneroRoutes from '@/routes/subgeneros.js'
 import userRoutes from '@/routes/users.js'
+import healthRoutes from '@/routes/health.js'
 import { seedPermissions } from '@/utils/seed.js'
 
 // ── CORS ──────────────────────────────────────────────────────────
@@ -38,10 +39,7 @@ app.use(cors({ origin: allowedOrigins, credentials: true }))
 app.use(express.json())
 
 // ── Rotas ─────────────────────────────────────────────────────────
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() })
-})
-
+app.use('/health', healthRoutes)
 app.use('/auth', authRoutes)
 app.use('/books', bookRoutes)
 app.use('/users', userRoutes)
@@ -67,12 +65,13 @@ const start = async () => {
 
   if (process.env.NODE_ENV === 'development' && HOST) {
     app.listen(PORT, HOST, () => {
-      console.log(`🚀 ecos-api rodando em http://${HOST}:${PORT}`)
-      console.log(`   CORS permitido: ${allowedOrigins.join(', ')}`)
+      console.log(`🚀 [ ecos-api ] rodando localmente em http://${HOST}:${PORT}`)
+      console.log(`📱 Acesse pelo celular em http://192.168.15.12:${PORT}`)
+      console.log(`🔗 CORS permitido: ${allowedOrigins.join(', ')}`)
     })
   } else {
     app.listen(PORT, () => {
-      console.log(`🚀 ecos-api rodando na porta ${PORT}`)
+      console.log(`🚀 [ Servidor Ecos ] rodando na porta ${PORT}`)
     })
   }
 }
