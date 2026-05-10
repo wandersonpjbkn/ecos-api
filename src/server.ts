@@ -1,5 +1,8 @@
+import '@/instrument.js'
+
 import 'dotenv/config'
 
+import * as Sentry from '@sentry/node'
 import cors from 'cors'
 import express from 'express'
 import helmet from 'helmet'
@@ -10,11 +13,11 @@ import authRoutes from '@/routes/auth.js'
 import autorRoutes from '@/routes/autores.js'
 import bookRoutes from '@/routes/books.js'
 import categoriaRoutes from '@/routes/categorias.js'
+import healthRoutes from '@/routes/health.js'
 import midiaRoutes from '@/routes/midias.js'
 import permissionRoutes from '@/routes/permissions.js'
 import subgeneroRoutes from '@/routes/subgeneros.js'
 import userRoutes from '@/routes/users.js'
-import healthRoutes from '@/routes/health.js'
 import { seedPermissions } from '@/utils/seed.js'
 
 // ── CORS ──────────────────────────────────────────────────────────
@@ -49,6 +52,8 @@ app.use('/categorias', categoriaRoutes)
 app.use('/subgeneros', subgeneroRoutes)
 app.use('/permissions', permissionRoutes)
 app.use('/admin', adminRoutes)
+
+Sentry.setupExpressErrorHandler(app)
 
 // ── 404 ───────────────────────────────────────────────────────────
 app.use((_req, res) => {

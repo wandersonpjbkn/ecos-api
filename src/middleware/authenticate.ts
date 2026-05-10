@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/node'
 import type { Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import jwksClient from 'jwks-rsa'
@@ -85,6 +86,12 @@ export const authenticate = async (
       name: user.name,
       role: user.role,
     }
+
+    Sentry.setUser({
+      id: String(user._id),
+      email: user.email,
+      username: user.name,
+    })
 
     next()
   } catch (err) {

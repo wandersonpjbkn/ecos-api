@@ -1,3 +1,5 @@
+import * as Sentry from '@sentry/node'
+
 import { DEFAULT_PERMISSIONS } from '@/constants/index.js'
 import { Permission } from '@/models/Permission.js'
 
@@ -23,5 +25,6 @@ export const seedPermissions = async (): Promise<void> => {
     console.log('✅ Permissões padrão criadas')
   } catch (err) {
     console.error('❌ Erro ao inicializar permissões:', err)
+    Sentry.captureException(err, { tags: { boot: 'seed' } })
   }
 }

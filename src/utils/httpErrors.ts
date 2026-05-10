@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/node'
 import type { Response } from 'express'
 import { MongoServerError } from 'mongodb'
 import { Error as MongooseError } from 'mongoose'
@@ -27,6 +28,8 @@ export const handleDataError = (res: Response, err: unknown, fallback: string): 
     res.status(400).json({ error: `Campo "${err.path}" inválido.` })
     return
   }
+
+  Sentry.captureException(err)
 
   res.status(500).json({ error: fallback })
 }

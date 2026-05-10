@@ -15,6 +15,7 @@
     "migrate:midia": "tsx -r tsconfig-paths/register src/migrations/migrate-midia.ts"
   },
   "dependencies": {
+    "@sentry/node": "^10.52.0",
     "cors": "^2.8.5",
     "csv-parse": "^5.5.6",
     "dotenv": "^16.4.5",

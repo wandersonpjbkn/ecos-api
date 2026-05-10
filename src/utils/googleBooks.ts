@@ -116,7 +116,10 @@ export const fetchGoogleBooks = async (
   return null
 }
 
-const extractResult = (volume: GoogleBooksVolume, strategy: GoogleBooksStrategy): GoogleBooksResult => {
+const extractResult = (
+  volume: GoogleBooksVolume,
+  strategy: GoogleBooksStrategy,
+): GoogleBooksResult => {
   const info = volume.volumeInfo
 
   // Prefere thumbnail sobre smallThumbnail e força HTTPS
