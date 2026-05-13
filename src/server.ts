@@ -1,5 +1,3 @@
-import './instrument.mjs'
-
 import 'dotenv/config'
 
 import * as Sentry from '@sentry/node'
