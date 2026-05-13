@@ -1,4 +1,4 @@
-import '@/instrument.js'
+import './instrument.mjs'
 
 import 'dotenv/config'
 
