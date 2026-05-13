@@ -11,5 +11,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Ping ecos-api keep-alive
-        run: curl -fsS https://ecos-api.onrender.com/health/keep-alive
+      - name: Keep Supabase auth active
+        run: curl -fsS -o /dev/null https://ecos-api.onrender.com/health/keep-alive
+
+      - name: Smoke test books endpoint (Mongo + Render path)
+        run: curl -fsS -o /dev/null https://ecos-api.onrender.com/books
