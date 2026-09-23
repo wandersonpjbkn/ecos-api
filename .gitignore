@@ -32,3 +32,6 @@ data/*.csv
 .env.*
 !.env.example
 !.env.example.*
+
+# Graphify (local study only)
+graphify-out/
