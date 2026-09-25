@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import type { Response } from 'express'
+import { Types } from 'mongoose'
 
 import { authenticate } from '@/middleware/authenticate.js'
 import { authorize } from '@/middleware/authorize.js'
@@ -11,7 +12,9 @@ import {
   validateUpdateBook,
 } from '@/middleware/validate.js'
 import { Book } from '@/models/Book.js'
+import { ReadingStatus, type ReadingStatusValue } from '@/models/ReadingStatus.js'
 import type { AuthRequest } from '@/types/index.ts'
+import { withOrigin } from '@/utils/bookOrigin.js'
 import { fetchEnrichmentPayload, getCoverSourceFromEnrichment } from '@/utils/enrichment.js'
 import { handleDataError } from '@/utils/httpErrors.js'
 
@@ -82,7 +85,7 @@ router.get('/', async (_req, res: Response) => {
       .sort({ added_at: -1 })
       .lean()
 
-    res.json(books)
+    res.json(await withOrigin(books))
   } catch (err) {
     console.error('[GET /books]', err)
     handleDataError(res, err, 'Erro ao buscar livros.')
@@ -106,10 +109,28 @@ router.get('/:id', validateObjectId('id'), async (req: AuthRequest, res: Respons
       return
     }
 
-    res.json(book)
+    const [withOrigem] = await withOrigin([book])
+    res.json(withOrigem)
   } catch (err) {
     console.error('[GET /books/:id]', err)
     handleDataError(res, err, 'Erro ao buscar livro.')
+  }
+})
+
+// ── GET /books/:id/reading — público ─────────────────────────────
+router.get('/:id/reading', validateObjectId('id'), async (req: AuthRequest, res: Response) => {
+  // Only totals: who wants to read or has read a book is private to each person.
+  try {
+    const totals = await ReadingStatus.aggregate<{ _id: ReadingStatusValue; total: number }>([
+      { $match: { book_id: new Types.ObjectId(String(req.params.id)) } },
+      { $group: { _id: '$status', total: { $sum: 1 } } },
+    ])
+    const count = (status: ReadingStatusValue) => totals.find((t) => t._id === status)?.total ?? 0
+
+    res.json({ quero_ler: count('quero_ler'), lido: count('lido') })
+  } catch (err) {
+    console.error('[GET /books/:id/reading]', err)
+    handleDataError(res, err, 'Erro ao buscar quem quer ler este livro.')
   }
 })
 
@@ -434,6 +455,9 @@ router.delete(
         res.status(404).json({ error: 'Livro não encontrado.' })
         return
       }
+
+      // A deleted book leaves no "Quero ler" / "Lido" pointing at nothing.
+      await ReadingStatus.deleteMany({ book_id: book._id })
 
       console.log(`[DELETE /books/:id] "${book.titulo}" removido por ${req.user!.email}`)
       res.status(204).send()
