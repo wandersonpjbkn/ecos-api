@@ -20,7 +20,7 @@ router.get('/', authorize('autores', 'read'), async (_req, res: Response) => {
     res.json(autores)
   } catch (err) {
     console.error('[GET /autores]', err)
-    handleDataError(res, err, 'Erro ao buscar autores.')
+    handleDataError(res, err, 'Não deu pra carregar os autores. Tente de novo.')
   }
 })
 
@@ -46,7 +46,7 @@ router.post(
       res.status(201).json(autor)
     } catch (err) {
       console.error('[POST /autores]', err)
-      handleDataError(res, err, 'Erro ao criar autor.')
+      handleDataError(res, err, 'Não deu pra criar o autor. Tente de novo.')
     }
   },
 )
@@ -78,7 +78,7 @@ router.patch(
       res.json(autor)
     } catch (err) {
       console.error('[PATCH /autores/:id]', err)
-      handleDataError(res, err, 'Erro ao atualizar autor.')
+      handleDataError(res, err, 'Não deu pra salvar o autor. Tente de novo.')
     }
   },
 )
@@ -94,7 +94,7 @@ router.delete(
       const inUse = await Book.exists({ autor: req.params.id })
       if (inUse) {
         res.status(409).json({
-          error: 'Autor em uso por um ou mais livros. Reatribua os livros antes de excluir.',
+          error: 'Há livros com esse autor. Troque o autor deles antes de remover.',
         })
         return
       }
@@ -109,7 +109,7 @@ router.delete(
       res.status(204).send()
     } catch (err) {
       console.error('[DELETE /autores/:id]', err)
-      handleDataError(res, err, 'Erro ao remover autor.')
+      handleDataError(res, err, 'Não deu pra remover o autor. Tente de novo.')
     }
   },
 )

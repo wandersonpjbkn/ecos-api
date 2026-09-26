@@ -17,7 +17,7 @@ export const authorize =
     const user = req.user
 
     if (!user) {
-      res.status(401).json({ error: 'Não autenticado.' })
+      res.status(401).json({ error: 'Entre na sua conta para continuar.' })
       return
     }
 
@@ -26,7 +26,7 @@ export const authorize =
 
       if (!permission || !permission.actions.includes(action)) {
         res.status(403).json({
-          error: `Sem permissão para ${action} em ${resource}.`,
+          error: 'Você não tem permissão para isso.',
         })
         return
       }
@@ -34,7 +34,7 @@ export const authorize =
       next()
     } catch (err) {
       console.error('[authorize] Erro ao verificar permissões:', err)
-      handleDataError(res, err, 'Erro ao verificar permissões.')
+      handleDataError(res, err, 'Não deu pra verificar as permissões. Tente de novo.')
     }
   }
 

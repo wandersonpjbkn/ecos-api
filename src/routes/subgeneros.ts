@@ -20,7 +20,7 @@ router.get('/', authorize('subgeneros', 'read'), async (_req, res: Response) => 
     res.json(subgeneros)
   } catch (err) {
     console.error('[GET /subgeneros]', err)
-    handleDataError(res, err, 'Erro ao buscar sub-gêneros.')
+    handleDataError(res, err, 'Não deu pra carregar os subgêneros. Tente de novo.')
   }
 })
 
@@ -36,7 +36,7 @@ router.post(
 
       const exists = await Subgenero.findOne({ slug })
       if (exists) {
-        res.status(409).json({ error: `Sub-gênero "${exists.nome}" já existe.` })
+        res.status(409).json({ error: `O subgênero "${exists.nome}" já existe.` })
         return
       }
 
@@ -50,7 +50,7 @@ router.post(
       res.status(201).json(subgenero)
     } catch (err) {
       console.error('[POST /subgeneros]', err)
-      handleDataError(res, err, 'Erro ao criar sub-gênero.')
+      handleDataError(res, err, 'Não deu pra criar o subgênero. Tente de novo.')
     }
   },
 )
@@ -68,7 +68,7 @@ router.patch(
 
       const conflict = await Subgenero.findOne({ slug, _id: { $ne: req.params.id } })
       if (conflict) {
-        res.status(409).json({ error: `Sub-gênero "${conflict.nome}" já existe.` })
+        res.status(409).json({ error: `O subgênero "${conflict.nome}" já existe.` })
         return
       }
 
@@ -78,7 +78,7 @@ router.patch(
         { new: true },
       )
       if (!subgenero) {
-        res.status(404).json({ error: 'Sub-gênero não encontrado.' })
+        res.status(404).json({ error: 'Subgênero não encontrado.' })
         return
       }
 
@@ -86,7 +86,7 @@ router.patch(
       res.json(subgenero)
     } catch (err) {
       console.error('[PATCH /subgeneros/:id]', err)
-      handleDataError(res, err, 'Erro ao atualizar sub-gênero.')
+      handleDataError(res, err, 'Não deu pra salvar o subgênero. Tente de novo.')
     }
   },
 )
@@ -100,7 +100,7 @@ router.delete(
     try {
       const subgenero = await Subgenero.findByIdAndDelete(req.params.id)
       if (!subgenero) {
-        res.status(404).json({ error: 'Sub-gênero não encontrado.' })
+        res.status(404).json({ error: 'Subgênero não encontrado.' })
         return
       }
 
@@ -108,7 +108,7 @@ router.delete(
       res.status(204).send()
     } catch (err) {
       console.error('[DELETE /subgeneros/:id]', err)
-      handleDataError(res, err, 'Erro ao remover sub-gênero.')
+      handleDataError(res, err, 'Não deu pra remover o subgênero. Tente de novo.')
     }
   },
 )

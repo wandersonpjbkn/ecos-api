@@ -5,7 +5,7 @@ export const authRateLimit = rateLimit({
   max: 120,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
-  message: { error: 'Muitas requisições. Tente novamente em instantes.' },
+  message: { error: 'Muitos pedidos seguidos. Tente de novo daqui a pouco.' },
 })
 
 export const writeRateLimit = rateLimit({
@@ -13,7 +13,7 @@ export const writeRateLimit = rateLimit({
   max: 30,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
-  message: { error: 'Muitas operações de escrita. Aguarde alguns segundos e tente novamente.' },
+  message: { error: 'Muitas mudanças seguidas. Espere alguns segundos e tente de novo.' },
 })
 
 export const enrichmentRateLimit = rateLimit({
@@ -22,7 +22,7 @@ export const enrichmentRateLimit = rateLimit({
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   message: {
-    error: 'Muitas tentativas de enriquecimento. Aguarde alguns segundos e tente novamente.',
+    error: 'Muitas buscas de dados seguidas. Espere alguns segundos e tente de novo.',
   },
 })
 
@@ -31,5 +31,5 @@ export const keepAliveRateLimit = rateLimit({
   max: 10,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
-  message: { error: 'Muitas requisições. Tente novamente em instantes.' },
+  message: { error: 'Muitos pedidos seguidos. Tente de novo daqui a pouco.' },
 })

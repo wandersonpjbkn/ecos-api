@@ -21,7 +21,7 @@ router.get('/', async (_req, res: Response) => {
     res.json(permissions)
   } catch (err) {
     console.error('[GET /permissions]', err)
-    handleDataError(res, err, 'Erro ao buscar permissões.')
+    handleDataError(res, err, 'Não deu pra carregar as permissões. Tente de novo.')
   }
 })
 
@@ -70,7 +70,7 @@ router.put('/:role/:resource', authRateLimit, writeRateLimit, async (req: AuthRe
     res.json(permission)
   } catch (err) {
     console.error('[PUT /permissions/:role/:resource]', err)
-    handleDataError(res, err, 'Erro ao atualizar permissão.')
+    handleDataError(res, err, 'Não deu pra salvar a permissão. Tente de novo.')
   }
 })
 

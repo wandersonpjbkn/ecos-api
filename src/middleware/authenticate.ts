@@ -30,7 +30,7 @@ export const authenticate = async (
   const authHeader = req.headers.authorization
 
   if (!authHeader?.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Token não fornecido.' })
+    res.status(401).json({ error: 'Entre na sua conta para continuar.' })
     return
   }
 
@@ -57,7 +57,7 @@ export const authenticate = async (
     }) as SupabaseJwtPayload
   } catch (err) {
     console.error('[authenticate] Falha na verificação do token:', err)
-    res.status(401).json({ error: 'Token inválido ou expirado.' })
+    res.status(401).json({ error: 'Sua sessão venceu. Entre de novo.' })
     return
   }
 

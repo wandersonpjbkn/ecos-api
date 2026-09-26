@@ -39,7 +39,7 @@ router.get('/', authorize('users', 'read'), async (_req, res: Response) => {
     res.json(users)
   } catch (err) {
     console.error('[GET /users]', err)
-    handleDataError(res, err, 'Erro ao buscar usuários.')
+    handleDataError(res, err, 'Não deu pra carregar os membros. Tente de novo.')
   }
 })
 
@@ -70,12 +70,12 @@ router.get('/me/claim', async (req: AuthRequest, res: Response) => {
       has_claim: true,
       warning:
         currentClaims.length > 1
-          ? 'Foram encontrados múltiplos claims para este usuário. Desvincule e refaça o claim.'
+          ? 'Sua conta está vinculada a mais de um nome. Desfaça o vínculo e vincule de novo.'
           : undefined,
     })
   } catch (err) {
     console.error('[GET /users/me/claim]', err)
-    handleDataError(res, err, 'Erro ao buscar claim atual.')
+    handleDataError(res, err, 'Não deu pra carregar seu vínculo. Tente de novo.')
   }
 })
 
@@ -99,15 +99,14 @@ router.post('/me/claim', authRateLimit, writeRateLimit, async (req: AuthRequest,
 
     if (currentClaims.length > 1) {
       res.status(409).json({
-        error:
-          'Seu usuário possui múltiplos claims ativos. Desvincule o claim atual antes de continuar.',
+        error: 'Sua conta está vinculada a mais de um nome. Desfaça o vínculo antes de continuar.',
       })
       return
     }
 
     if (currentClaims.length === 1 && currentClaims[0].toLowerCase() !== claimName.toLowerCase()) {
       res.status(409).json({
-        error: `Você já possui claim ativo em "${currentClaims[0]}". Desvincule antes de reivindicar outro.`,
+        error: `Sua conta já está vinculada a "${currentClaims[0]}". Desfaça esse vínculo antes de escolher outro nome.`,
       })
       return
     }
@@ -118,7 +117,7 @@ router.post('/me/claim', authRateLimit, writeRateLimit, async (req: AuthRequest,
     })
 
     if (alreadyClaimedByAnother) {
-      res.status(409).json({ error: 'Este nome já foi reivindicado por outro usuário.' })
+      res.status(409).json({ error: 'Este nome já está vinculado a outra conta.' })
       return
     }
 
@@ -171,7 +170,7 @@ router.post('/me/claim', authRateLimit, writeRateLimit, async (req: AuthRequest,
     })
   } catch (err) {
     console.error('[POST /users/me/claim]', err)
-    handleDataError(res, err, 'Erro ao realizar claim.')
+    handleDataError(res, err, 'Não deu pra vincular o nome. Tente de novo.')
   }
 })
 
@@ -186,7 +185,7 @@ router.delete(
       const currentClaims = await getCurrentClaims(user._id.toString())
 
       if (currentClaims.length === 0) {
-        res.status(404).json({ error: 'Você não possui claim ativo.' })
+        res.status(404).json({ error: 'Sua conta não está vinculada a nenhum nome.' })
         return
       }
 
@@ -211,7 +210,7 @@ router.delete(
       })
     } catch (err) {
       console.error('[DELETE /users/me/claim]', err)
-      handleDataError(res, err, 'Erro ao desvincular claim.')
+      handleDataError(res, err, 'Não deu pra desfazer o vínculo. Tente de novo.')
     }
   },
 )
@@ -233,7 +232,7 @@ router.patch(
       }
 
       if (!book.quem_user_id || book.quem_user_id.toString() !== req.user!._id.toString()) {
-        res.status(403).json({ error: 'Você só pode editar livros vinculados ao seu perfil.' })
+        res.status(403).json({ error: 'Você só pode corrigir os livros ligados ao seu nome.' })
         return
       }
 
@@ -274,7 +273,7 @@ router.patch(
       res.json(book)
     } catch (err) {
       console.error('[PATCH /users/me/books/:id]', err)
-      handleDataError(res, err, 'Erro ao atualizar livro.')
+      handleDataError(res, err, 'Não deu pra salvar o livro. Tente de novo.')
     }
   },
 )
@@ -290,7 +289,7 @@ router.patch(
   async (req: AuthRequest, res: Response) => {
     try {
       if (req.params.id === req.user!._id.toString()) {
-        res.status(400).json({ error: 'Você não pode alterar sua própria role.' })
+        res.status(400).json({ error: 'Você não pode mudar o seu próprio nível de permissão.' })
         return
       }
 
@@ -309,7 +308,7 @@ router.patch(
       res.json(user)
     } catch (err) {
       console.error('[PATCH /users/:id/role]', err)
-      handleDataError(res, err, 'Erro ao atualizar role.')
+      handleDataError(res, err, 'Não deu pra mudar a permissão. Tente de novo.')
     }
   },
 )
@@ -338,7 +337,7 @@ router.patch('/me', authRateLimit, writeRateLimit, async (req: AuthRequest, res:
     res.json(user)
   } catch (err) {
     console.error('[PATCH /users/me]', err)
-    handleDataError(res, err, 'Erro ao atualizar perfil.')
+    handleDataError(res, err, 'Não deu pra salvar o seu nome. Tente de novo.')
   }
 })
 

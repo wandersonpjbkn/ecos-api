@@ -184,7 +184,7 @@ router.post('/books/enrich', authRateLimit, enrichmentRateLimit, async (req: Aut
     })
   } catch (err) {
     console.error('[POST /admin/books/enrich]', err)
-    handleDataError(res, err, 'Erro ao executar enriquecimento.')
+    handleDataError(res, err, 'Não deu pra buscar os dados dos livros. Tente de novo.')
   }
 })
 
@@ -209,7 +209,7 @@ router.get('/books/enrich/status', authRateLimit, async (_req: AuthRequest, res:
     })
   } catch (err) {
     console.error('[GET /admin/books/enrich/status]', err)
-    handleDataError(res, err, 'Erro ao buscar status.')
+    handleDataError(res, err, 'Não deu pra carregar o que já foi feito. Tente de novo.')
   }
 })
 
@@ -230,7 +230,7 @@ router.get('/books/enrich/history', authRateLimit, async (req: AuthRequest, res:
     res.json({ total_runs: history.length, history })
   } catch (err) {
     console.error('[GET /admin/books/enrich/history]', err)
-    handleDataError(res, err, 'Erro ao buscar histórico de enriquecimentos.')
+    handleDataError(res, err, 'Não deu pra carregar o histórico. Tente de novo.')
   }
 })
 
@@ -251,7 +251,7 @@ router.get('/users/claims/history', authRateLimit, async (req: AuthRequest, res:
     res.json({ total: history.length, history })
   } catch (err) {
     console.error('[GET /admin/users/claims/history]', err)
-    handleDataError(res, err, 'Erro ao buscar histórico de claims.')
+    handleDataError(res, err, 'Não deu pra carregar o histórico de vínculos. Tente de novo.')
   }
 })
 

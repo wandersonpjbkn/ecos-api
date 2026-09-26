@@ -20,7 +20,7 @@ router.get('/', authorize('midias', 'read'), async (_req, res: Response) => {
     res.json(midias)
   } catch (err) {
     console.error('[GET /midias]', err)
-    handleDataError(res, err, 'Erro ao buscar mídias.')
+    handleDataError(res, err, 'Não deu pra carregar as mídias. Tente de novo.')
   }
 })
 
@@ -46,7 +46,7 @@ router.post(
       res.status(201).json(midia)
     } catch (err) {
       console.error('[POST /midias]', err)
-      handleDataError(res, err, 'Erro ao criar mídia.')
+      handleDataError(res, err, 'Não deu pra criar a mídia. Tente de novo.')
     }
   },
 )
@@ -78,7 +78,7 @@ router.patch(
       res.json(midia)
     } catch (err) {
       console.error('[PATCH /midias/:id]', err)
-      handleDataError(res, err, 'Erro ao atualizar mídia.')
+      handleDataError(res, err, 'Não deu pra salvar a mídia. Tente de novo.')
     }
   },
 )
@@ -94,7 +94,7 @@ router.delete(
       const inUse = await Book.exists({ midia: req.params.id })
       if (inUse) {
         res.status(409).json({
-          error: 'Mídia em uso por um ou mais livros. Reatribua os livros antes de excluir.',
+          error: 'Há livros com essa mídia. Troque a mídia deles antes de remover.',
         })
         return
       }
@@ -109,7 +109,7 @@ router.delete(
       res.status(204).send()
     } catch (err) {
       console.error('[DELETE /midias/:id]', err)
-      handleDataError(res, err, 'Erro ao remover mídia.')
+      handleDataError(res, err, 'Não deu pra remover a mídia. Tente de novo.')
     }
   },
 )

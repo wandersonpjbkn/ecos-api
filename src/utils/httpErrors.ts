@@ -11,7 +11,9 @@ const getDuplicatedField = (err: MongoServerError): string =>
 export const handleDataError = (res: Response, err: unknown, fallback: string): void => {
   if (err instanceof MongoServerError && err.code === 11000) {
     const duplicatedField = getDuplicatedField(err)
-    res.status(409).json({ error: `Valor já cadastrado para ${duplicatedField}.` })
+    res.status(409).json({
+      error: `Já existe um item com esse ${duplicatedField === 'slug' || duplicatedField === 'nome' ? 'nome' : 'valor'}.`,
+    })
     return
   }
 

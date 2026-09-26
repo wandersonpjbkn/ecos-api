@@ -67,7 +67,7 @@ const ensureCanEdit = (req: AuthRequest, res: Response, ownerUserId?: string): b
   const isOwner = ownerUserId !== undefined && ownerUserId === user._id.toString()
 
   if (!isAdmin && !isOwner) {
-    res.status(403).json({ error: 'Você só pode editar suas próprias indicações.' })
+    res.status(403).json({ error: 'Você só pode corrigir os livros ligados ao seu nome.' })
     return false
   }
   return true
@@ -88,7 +88,7 @@ router.get('/', async (_req, res: Response) => {
     res.json(await withOrigin(books))
   } catch (err) {
     console.error('[GET /books]', err)
-    handleDataError(res, err, 'Erro ao buscar livros.')
+    handleDataError(res, err, 'Não deu pra carregar os livros. Tente de novo.')
   }
 })
 
@@ -113,7 +113,7 @@ router.get('/:id', validateObjectId('id'), async (req: AuthRequest, res: Respons
     res.json(withOrigem)
   } catch (err) {
     console.error('[GET /books/:id]', err)
-    handleDataError(res, err, 'Erro ao buscar livro.')
+    handleDataError(res, err, 'Não deu pra abrir o livro. Tente de novo.')
   }
 })
 
@@ -130,7 +130,7 @@ router.get('/:id/reading', validateObjectId('id'), async (req: AuthRequest, res:
     res.json({ quero_ler: count('quero_ler'), lido: count('lido') })
   } catch (err) {
     console.error('[GET /books/:id/reading]', err)
-    handleDataError(res, err, 'Erro ao buscar quem quer ler este livro.')
+    handleDataError(res, err, 'Não deu pra carregar quem marcou este livro. Tente de novo.')
   }
 })
 
@@ -150,7 +150,7 @@ router.post(
       res.status(201).json(book)
     } catch (err) {
       console.error('[POST /books]', err)
-      handleDataError(res, err, 'Erro ao criar livro.')
+      handleDataError(res, err, 'Não deu pra criar o livro. Tente de novo.')
     }
   },
 )
@@ -213,7 +213,7 @@ router.put(
       res.json(book)
     } catch (err) {
       console.error('[PUT /books/:id]', err)
-      handleDataError(res, err, 'Erro ao substituir livro.')
+      handleDataError(res, err, 'Não deu pra salvar o livro. Tente de novo.')
     }
   },
 )
@@ -278,7 +278,7 @@ router.patch(
       res.json(book)
     } catch (err) {
       console.error('[PATCH /books/:id]', err)
-      handleDataError(res, err, 'Erro ao atualizar livro.')
+      handleDataError(res, err, 'Não deu pra salvar o livro. Tente de novo.')
     }
   },
 )
@@ -334,7 +334,7 @@ router.post(
       })
     } catch (err) {
       console.error('[POST /books/:id/enrich]', err)
-      handleDataError(res, err, 'Erro ao gerar preview de enriquecimento.')
+      handleDataError(res, err, 'Não deu pra buscar os dados do livro. Tente de novo.')
     }
   },
 )
@@ -383,7 +383,8 @@ router.post(
 
       if (book.manually_edited_at) {
         res.status(409).json({
-          error: 'Livro possui edição manual e não pode receber apply automático de enrichment.',
+          error:
+            'Este livro foi corrigido à mão; os dados automáticos não substituem essa correção.',
         })
         return
       }
@@ -436,7 +437,7 @@ router.post(
       })
     } catch (err) {
       console.error('[POST /books/:id/enrich/apply]', err)
-      handleDataError(res, err, 'Erro ao aplicar enriquecimento.')
+      handleDataError(res, err, 'Não deu pra aplicar os dados. Tente de novo.')
     }
   },
 )
@@ -463,7 +464,7 @@ router.delete(
       res.status(204).send()
     } catch (err) {
       console.error('[DELETE /books/:id]', err)
-      handleDataError(res, err, 'Erro ao remover livro.')
+      handleDataError(res, err, 'Não deu pra remover o livro. Tente de novo.')
     }
   },
 )

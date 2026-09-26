@@ -18,7 +18,7 @@ router.get('/', authorize('categorias', 'read'), async (_req, res: Response) => 
     res.json(await Categoria.find().sort({ nome: 1 }).lean())
   } catch (err) {
     console.error('[GET /categorias]', err)
-    handleDataError(res, err, 'Erro ao buscar categorias.')
+    handleDataError(res, err, 'Não deu pra carregar os gêneros. Tente de novo.')
   }
 })
 
@@ -33,7 +33,7 @@ router.post(
       const slug = slugify(nome)
       const exists = await Categoria.findOne({ slug })
       if (exists) {
-        res.status(409).json({ error: `Categoria "${exists.nome}" já existe.` })
+        res.status(409).json({ error: `O gênero "${exists.nome}" já existe.` })
         return
       }
       const categoria = await Categoria.create({ nome, slug, created_by: req.user!._id })
@@ -41,7 +41,7 @@ router.post(
       res.status(201).json(categoria)
     } catch (err) {
       console.error('[POST /categorias]', err)
-      handleDataError(res, err, 'Erro ao criar categoria.')
+      handleDataError(res, err, 'Não deu pra criar o gênero. Tente de novo.')
     }
   },
 )
@@ -59,7 +59,7 @@ router.patch(
 
       const conflict = await Categoria.findOne({ slug, _id: { $ne: req.params.id } })
       if (conflict) {
-        res.status(409).json({ error: `Categoria "${conflict.nome}" já existe.` })
+        res.status(409).json({ error: `O gênero "${conflict.nome}" já existe.` })
         return
       }
 
@@ -69,7 +69,7 @@ router.patch(
         { new: true },
       )
       if (!categoria) {
-        res.status(404).json({ error: 'Categoria não encontrada.' })
+        res.status(404).json({ error: 'Gênero não encontrado.' })
         return
       }
 
@@ -77,7 +77,7 @@ router.patch(
       res.json(categoria)
     } catch (err) {
       console.error('[PATCH /categorias/:id]', err)
-      handleDataError(res, err, 'Erro ao atualizar categoria.')
+      handleDataError(res, err, 'Não deu pra salvar o gênero. Tente de novo.')
     }
   },
 )
@@ -91,19 +91,21 @@ router.delete(
     try {
       const { Book } = await import('@/models/Book.js')
       if (await Book.exists({ categoria: req.params.id })) {
-        res.status(409).json({ error: 'Categoria em uso. Reatribua os livros antes de excluir.' })
+        res
+          .status(409)
+          .json({ error: 'Há livros com esse gênero. Troque o gênero deles antes de remover.' })
         return
       }
       const categoria = await Categoria.findByIdAndDelete(req.params.id)
       if (!categoria) {
-        res.status(404).json({ error: 'Categoria não encontrada.' })
+        res.status(404).json({ error: 'Gênero não encontrado.' })
         return
       }
       console.log(`[DELETE /categorias/:id] "${categoria.nome}" removida por ${req.user!.email}`)
       res.status(204).send()
     } catch (err) {
       console.error('[DELETE /categorias/:id]', err)
-      handleDataError(res, err, 'Erro ao remover categoria.')
+      handleDataError(res, err, 'Não deu pra remover o gênero. Tente de novo.')
     }
   },
 )
