@@ -8,6 +8,12 @@ const getDuplicatedField = (err: MongoServerError): string =>
   Object.keys((err as { keyValue?: Record<string, unknown> }).keyValue ?? {})[0] ??
   'campo único'
 
+// "PUT /books/:id": the route pattern, so the fallback text shared by several routes does not hide which one failed.
+const routeOf = (res: Response): string => {
+  const req = res.req
+  return req ? `${req.method} ${req.baseUrl}${req.route?.path ?? req.path}` : 'unknown'
+}
+
 export const handleDataError = (res: Response, err: unknown, fallback: string): void => {
   if (err instanceof MongoServerError && err.code === 11000) {
     const duplicatedField = getDuplicatedField(err)
@@ -31,7 +37,7 @@ export const handleDataError = (res: Response, err: unknown, fallback: string): 
     return
   }
 
-  Sentry.captureException(err)
+  Sentry.captureException(err, { tags: { route: routeOf(res) } })
 
   res.status(500).json({ error: fallback })
 }
