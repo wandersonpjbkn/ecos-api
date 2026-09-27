@@ -40,7 +40,7 @@ export const authorize =
 
 export const adminOnly = (req: AuthRequest, res: Response, next: NextFunction): void => {
   if (req.user?.role !== 'admin') {
-    res.status(403).json({ error: 'Acesso restrito a administradores.' })
+    res.status(403).json({ error: 'Isso é só para Administrador.' })
     return
   }
   next()

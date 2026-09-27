@@ -78,7 +78,7 @@ router.patch(
         { new: true },
       )
       if (!subgenero) {
-        res.status(404).json({ error: 'Subgênero não encontrado.' })
+        res.status(404).json({ error: 'Não achamos esse subgênero.' })
         return
       }
 
@@ -100,7 +100,7 @@ router.delete(
     try {
       const subgenero = await Subgenero.findByIdAndDelete(req.params.id)
       if (!subgenero) {
-        res.status(404).json({ error: 'Subgênero não encontrado.' })
+        res.status(404).json({ error: 'Não achamos esse subgênero.' })
         return
       }
 

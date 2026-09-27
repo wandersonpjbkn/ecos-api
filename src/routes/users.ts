@@ -11,9 +11,12 @@ import {
 } from '@/middleware/validate.js'
 import { Book } from '@/models/Book.js'
 import { ClaimHistory } from '@/models/ClaimHistory.js'
+import { Midia } from '@/models/Midia.js'
+import { Permission } from '@/models/Permission.js'
 import { User } from '@/models/User.js'
 import readingRoutes from '@/routes/reading.js'
 import type { AuthRequest } from '@/types/index.ts'
+import { markBookEdit, OWNER_TRACKED, recordBookEdit } from '@/utils/bookEdit.js'
 import { handleDataError } from '@/utils/httpErrors.js'
 
 const router = Router()
@@ -35,7 +38,8 @@ router.use('/me/reading', readingRoutes)
 // ── GET /users ────────────────────────────────────────────────────
 router.get('/', authorize('users', 'read'), async (_req, res: Response) => {
   try {
-    const users = await User.find().select('-supabase_uid').sort({ created_at: -1 }).lean()
+    // What the members list shows, nothing more: another person's preferences and legacy fields stay out.
+    const users = await User.find().select('name email role created_at last_seen_at').sort({ created_at: -1 }).lean()
     res.json(users)
   } catch (err) {
     console.error('[GET /users]', err)
@@ -44,8 +48,18 @@ router.get('/', authorize('users', 'read'), async (_req, res: Response) => {
 })
 
 // ── GET /users/me ─────────────────────────────────────────────────
-router.get('/me', (req: AuthRequest, res: Response) => {
-  res.json({ user: req.user })
+// The matrix of the person's own level, so the front can hide what the server would refuse (it never decides).
+router.get('/me', async (req: AuthRequest, res: Response) => {
+  try {
+    const rows = await Permission.find({ role: req.user!.role })
+      .select('resource actions -_id')
+      .lean()
+    const permissions = Object.fromEntries(rows.map((row) => [row.resource, row.actions]))
+    res.json({ user: req.user, permissions })
+  } catch (err) {
+    console.error('[GET /users/me]', err)
+    handleDataError(res, err, 'Não deu pra carregar sua conta. Tente de novo.')
+  }
 })
 
 // ── GET /users/me/claim ──────────────────────────────────────────
@@ -84,13 +98,13 @@ router.post('/me/claim', authRateLimit, writeRateLimit, async (req: AuthRequest,
   try {
     const rawName = req.body?.quem_nome
     if (typeof rawName !== 'string' || rawName.trim().length === 0) {
-      res.status(400).json({ error: 'quem_nome é obrigatório.' })
+      res.status(400).json({ error: 'Escolha o seu nome.' })
       return
     }
 
     const claimName = rawName.trim()
     if (claimName.length > 60) {
-      res.status(400).json({ error: 'quem_nome deve ter no máximo 60 caracteres.' })
+      res.status(400).json({ error: 'O nome pode ter até 60 letras.' })
       return
     }
 
@@ -126,7 +140,7 @@ router.post('/me/claim', authRateLimit, writeRateLimit, async (req: AuthRequest,
     })
 
     if (targetBooks === 0) {
-      res.status(404).json({ error: 'Nenhuma menção encontrada para esse nome.' })
+      res.status(404).json({ error: 'Não achamos livros com esse nome.' })
       return
     }
 
@@ -227,7 +241,7 @@ router.patch(
       const book = await Book.findById(req.params.id)
 
       if (!book) {
-        res.status(404).json({ error: 'Livro não encontrado.' })
+        res.status(404).json({ error: 'Não achamos esse livro. Ele pode ter saído do catálogo.' })
         return
       }
 
@@ -237,27 +251,7 @@ router.patch(
       }
 
       const user = req.user!
-      const now = new Date()
-      const trackable = [
-        'titulo',
-        'autor',
-        'categoria',
-        'midia',
-        'subgeneros',
-        'porque',
-        'synopsis',
-      ] as const
-
-      for (const field of trackable) {
-        if (req.body[field] !== undefined && String(req.body[field]) !== String(book[field])) {
-          book.edit_history.push({
-            field,
-            previous_value: String(book[field] ?? ''),
-            edited_at: now,
-            edited_by: user._id,
-          })
-        }
-      }
+      const marks = recordBookEdit(book, req.body, user._id, OWNER_TRACKED)
 
       if (req.body.titulo !== undefined) book.titulo = req.body.titulo
       if (req.body.autor !== undefined) book.autor = req.body.autor
@@ -266,6 +260,13 @@ router.patch(
       if (req.body.subgeneros !== undefined) book.subgeneros = req.body.subgeneros
       if (req.body.porque !== undefined) book.porque = req.body.porque
       if (req.body.synopsis !== undefined) book.synopsis = req.body.synopsis
+      if (req.body.isbn !== undefined) book.isbn = req.body.isbn
+      if (req.body.cover_url !== undefined) book.cover_url = req.body.cover_url
+      if (req.body.google_books_id !== undefined) book.google_books_id = req.body.google_books_id
+      if (req.body.page_count !== undefined) book.page_count = req.body.page_count ?? undefined
+      if (req.body.published_year !== undefined)
+        book.published_year = req.body.published_year ?? undefined
+      markBookEdit(book, req.body, marks)
 
       await book.save()
 
@@ -300,7 +301,7 @@ router.patch(
       )
 
       if (!user) {
-        res.status(404).json({ error: 'Usuário não encontrado.' })
+        res.status(404).json({ error: 'Não achamos essa pessoa.' })
         return
       }
 
@@ -308,7 +309,7 @@ router.patch(
       res.json(user)
     } catch (err) {
       console.error('[PATCH /users/:id/role]', err)
-      handleDataError(res, err, 'Não deu pra mudar a permissão. Tente de novo.')
+      handleDataError(res, err, 'Não deu pra mudar o nível. Tente de novo.')
     }
   },
 )
@@ -316,28 +317,53 @@ router.patch(
 // ── PATCH /users/me ───────────────────────────────────────────────
 router.patch('/me', authRateLimit, writeRateLimit, async (req: AuthRequest, res: Response) => {
   try {
-    const { name } = req.body
+    const { name, hidden_midias } = req.body
+    const update: { name?: string; hidden_midias?: string[] } = {}
 
-    if (typeof name !== 'string' || name.trim().length === 0) {
-      res.status(400).json({ error: 'name é obrigatório.' })
+    if (name === undefined && hidden_midias === undefined) {
+      res.status(400).json({ error: 'Não deu pra salvar. Tente de novo.' })
       return
     }
 
-    if (name.trim().length > 60) {
-      res.status(400).json({ error: 'name deve ter no máximo 60 caracteres.' })
-      return
+    if (name !== undefined) {
+      if (typeof name !== 'string' || name.trim().length === 0) {
+        res.status(400).json({ error: 'Escreva o seu nome.' })
+        return
+      }
+
+      if (name.trim().length > 60) {
+        res.status(400).json({ error: 'O nome pode ter até 60 letras.' })
+        return
+      }
+
+      update.name = name.trim()
     }
 
-    const user = await User.findByIdAndUpdate(
-      req.user!._id,
-      { name: name.trim() },
-      { new: true, select: '-supabase_uid' },
-    )
+    if (hidden_midias !== undefined) {
+      if (!Array.isArray(hidden_midias) || hidden_midias.some((m) => typeof m !== 'string')) {
+        res.status(400).json({ error: 'Não deu pra salvar seus formatos. Tente de novo.' })
+        return
+      }
+
+      // A renamed or removed format drops out instead of failing: the answer is the list kept, and the front adopts it.
+      const known = new Set<string>(await Midia.distinct('nome'))
+      update.hidden_midias = [...new Set<string>(hidden_midias)].filter((m) => known.has(m))
+    }
+
+    const user = await User.findByIdAndUpdate(req.user!._id, update, {
+      new: true,
+      select: '-supabase_uid',
+    })
+
+    if (!user) {
+      res.status(404).json({ error: 'Não achamos essa pessoa.' })
+      return
+    }
 
     res.json(user)
   } catch (err) {
     console.error('[PATCH /users/me]', err)
-    handleDataError(res, err, 'Não deu pra salvar o seu nome. Tente de novo.')
+    handleDataError(res, err, 'Não deu pra salvar. Tente de novo.')
   }
 })
 

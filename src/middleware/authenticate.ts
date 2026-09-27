@@ -38,7 +38,7 @@ export const authenticate = async (
 
   if (!process.env.SUPABASE_URL) {
     console.error('[authenticate] SUPABASE_URL não definida')
-    res.status(500).json({ error: 'Erro de configuração do servidor.' })
+    res.status(500).json({ error: 'A plataforma está fora do ar agora. Tente daqui a pouco.' })
     return
   }
 
@@ -85,6 +85,7 @@ export const authenticate = async (
       email: user.email,
       name: user.name,
       role: user.role,
+      hidden_midias: user.hidden_midias,
     }
 
     Sentry.setUser({
@@ -96,6 +97,6 @@ export const authenticate = async (
     next()
   } catch (err) {
     console.error('[authenticate] Erro ao buscar usuário:', err)
-    handleDataError(res, err, 'Erro interno de autenticação.')
+    handleDataError(res, err, 'A plataforma está fora do ar agora. Tente daqui a pouco.')
   }
 }

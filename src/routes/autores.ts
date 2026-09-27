@@ -36,7 +36,7 @@ router.post(
 
       const exists = await Autor.findOne({ slug })
       if (exists) {
-        res.status(409).json({ error: `Autor "${exists.nome}" já existe.` })
+        res.status(409).json({ error: `O autor "${exists.nome}" já existe.` })
         return
       }
 
@@ -64,13 +64,13 @@ router.patch(
 
       const conflict = await Autor.findOne({ slug, _id: { $ne: req.params.id } })
       if (conflict) {
-        res.status(409).json({ error: `Autor "${conflict.nome}" já existe.` })
+        res.status(409).json({ error: `O autor "${conflict.nome}" já existe.` })
         return
       }
 
       const autor = await Autor.findByIdAndUpdate(req.params.id, { nome, slug }, { new: true })
       if (!autor) {
-        res.status(404).json({ error: 'Autor não encontrado.' })
+        res.status(404).json({ error: 'Não achamos esse autor.' })
         return
       }
 
@@ -101,7 +101,7 @@ router.delete(
 
       const autor = await Autor.findByIdAndDelete(req.params.id)
       if (!autor) {
-        res.status(404).json({ error: 'Autor não encontrado.' })
+        res.status(404).json({ error: 'Não achamos esse autor.' })
         return
       }
 

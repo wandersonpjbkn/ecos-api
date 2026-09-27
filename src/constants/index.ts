@@ -12,6 +12,17 @@ export const RESOURCES = [
 
 export const ACTIONS = ['create', 'read', 'update', 'delete'] as const
 
+/** What each resource's matrix really controls; the rest is fixed by the routes (public reads, admin-only). */
+export const CONFIGURABLE: Record<(typeof RESOURCES)[number], (typeof ACTIONS)[number][]> = {
+  books: ['create', 'update', 'delete'],
+  users: ['read'],
+  autores: ['create', 'read', 'update', 'delete'],
+  midias: ['create', 'read', 'update', 'delete'],
+  categorias: ['create', 'read', 'update', 'delete'],
+  subgeneros: ['create', 'read', 'update', 'delete'],
+  permissions: [],
+}
+
 /** Permissões padrão aplicadas ao seed inicial do banco */
 export const DEFAULT_PERMISSIONS = [
   // ── admin — acesso total ──────────────────────────────────────

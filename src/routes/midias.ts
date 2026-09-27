@@ -20,7 +20,7 @@ router.get('/', authorize('midias', 'read'), async (_req, res: Response) => {
     res.json(midias)
   } catch (err) {
     console.error('[GET /midias]', err)
-    handleDataError(res, err, 'Não deu pra carregar as mídias. Tente de novo.')
+    handleDataError(res, err, 'Não deu pra carregar os formatos. Tente de novo.')
   }
 })
 
@@ -36,7 +36,7 @@ router.post(
 
       const exists = await Midia.findOne({ slug })
       if (exists) {
-        res.status(409).json({ error: `Mídia "${exists.nome}" já existe.` })
+        res.status(409).json({ error: `O formato "${exists.nome}" já existe.` })
         return
       }
 
@@ -46,7 +46,7 @@ router.post(
       res.status(201).json(midia)
     } catch (err) {
       console.error('[POST /midias]', err)
-      handleDataError(res, err, 'Não deu pra criar a mídia. Tente de novo.')
+      handleDataError(res, err, 'Não deu pra criar o formato. Tente de novo.')
     }
   },
 )
@@ -64,13 +64,13 @@ router.patch(
 
       const conflict = await Midia.findOne({ slug, _id: { $ne: req.params.id } })
       if (conflict) {
-        res.status(409).json({ error: `Mídia "${conflict.nome}" já existe.` })
+        res.status(409).json({ error: `O formato "${conflict.nome}" já existe.` })
         return
       }
 
       const midia = await Midia.findByIdAndUpdate(req.params.id, { nome, slug }, { new: true })
       if (!midia) {
-        res.status(404).json({ error: 'Mídia não encontrada.' })
+        res.status(404).json({ error: 'Não achamos esse formato.' })
         return
       }
 
@@ -78,7 +78,7 @@ router.patch(
       res.json(midia)
     } catch (err) {
       console.error('[PATCH /midias/:id]', err)
-      handleDataError(res, err, 'Não deu pra salvar a mídia. Tente de novo.')
+      handleDataError(res, err, 'Não deu pra salvar o formato. Tente de novo.')
     }
   },
 )
@@ -94,14 +94,14 @@ router.delete(
       const inUse = await Book.exists({ midia: req.params.id })
       if (inUse) {
         res.status(409).json({
-          error: 'Há livros com essa mídia. Troque a mídia deles antes de remover.',
+          error: 'Há livros com esse formato. Troque o formato deles antes de remover.',
         })
         return
       }
 
       const midia = await Midia.findByIdAndDelete(req.params.id)
       if (!midia) {
-        res.status(404).json({ error: 'Mídia não encontrada.' })
+        res.status(404).json({ error: 'Não achamos esse formato.' })
         return
       }
 
@@ -109,7 +109,7 @@ router.delete(
       res.status(204).send()
     } catch (err) {
       console.error('[DELETE /midias/:id]', err)
-      handleDataError(res, err, 'Não deu pra remover a mídia. Tente de novo.')
+      handleDataError(res, err, 'Não deu pra remover o formato. Tente de novo.')
     }
   },
 )

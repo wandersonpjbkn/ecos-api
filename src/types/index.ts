@@ -25,6 +25,7 @@ export interface AuthUser {
   email: string
   name: string
   role: Role
+  hidden_midias?: string[]
 }
 
 export interface AuthRequest extends Request {

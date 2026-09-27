@@ -18,7 +18,7 @@ export const handleDataError = (res: Response, err: unknown, fallback: string): 
   if (err instanceof MongoServerError && err.code === 11000) {
     const duplicatedField = getDuplicatedField(err)
     res.status(409).json({
-      error: `Já existe um item com esse ${duplicatedField === 'slug' || duplicatedField === 'nome' ? 'nome' : 'valor'}.`,
+      error: `Já existe um com esse ${duplicatedField === 'slug' || duplicatedField === 'nome' ? 'nome' : 'valor'}.`,
     })
     return
   }
@@ -33,7 +33,7 @@ export const handleDataError = (res: Response, err: unknown, fallback: string): 
   }
 
   if (err instanceof MongooseError.CastError) {
-    res.status(400).json({ error: `Campo "${err.path}" inválido.` })
+    res.status(400).json({ error: 'Algum dado não está certo. Confira e tente de novo.' })
     return
   }
 

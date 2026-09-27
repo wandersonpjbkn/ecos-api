@@ -8,136 +8,142 @@ const isOptionalString = (v: unknown): boolean =>
 
 // ── Books ─────────────────────────────────────────────────────────
 
-export const validateCreateBook = (req: AuthRequest, res: Response, next: NextFunction): void => {
-  const { titulo, autor, categoria, midia, quem_nome } = req.body
+// How a field is named on screen: the API answers in the words the reader sees, never the raw field name.
+const FIELD = {
+  titulo: 'o título',
+  autor: 'o autor',
+  categoria: 'o gênero',
+  midia: 'o formato',
+  quem_nome: 'quem mencionou',
+  subgeneros: 'os subgêneros',
+  porque: 'o comentário',
+  synopsis: 'a sinopse',
+  isbn: 'o ISBN',
+  cover_url: 'a capa',
+  cover_source: 'a origem da capa',
+  google_books_id: 'o código do Google Books',
+  publisher: 'a editora',
+  page_count: 'o número de páginas',
+  published_year: 'o ano',
+} as const
+type BookField = keyof typeof FIELD
 
-  if (!isString(titulo)) {
-    res.status(400).json({ error: 'titulo é obrigatório.' })
-    return
-  }
-  if (!isObjectId(autor)) {
-    res.status(400).json({ error: 'autor deve ser um ObjectId válido.' })
-    return
-  }
-  if (!isObjectId(categoria)) {
-    res.status(400).json({ error: 'categoria deve ser um ObjectId válido.' })
-    return
-  }
-  if (!isObjectId(midia)) {
-    res.status(400).json({ error: 'midia deve ser um ObjectId válido.' })
-    return
-  }
-  if (!isString(quem_nome)) {
-    res.status(400).json({ error: 'quem_nome é obrigatório.' })
-    return
-  }
-
-  next()
+// Older clients send these names; normalizeBookInput maps them before saving.
+const ALIAS: Record<string, BookField> = {
+  description: 'synopsis',
+  coverUrl: 'cover_url',
+  coverSource: 'cover_source',
+  pageCount: 'page_count',
+  publishedYear: 'published_year',
 }
 
-export const validateUpdateBook = (req: AuthRequest, res: Response, next: NextFunction): void => {
-  const allowed = [
-    'titulo',
-    'autor',
-    'categoria',
-    'midia',
-    'subgeneros',
-    'quem_nome',
-    'porque',
-    'isbn',
-    'cover_url',
-    'cover_source',
-    'synopsis',
-    'publisher',
-    'page_count',
-    'published_year',
-    'google_books_id',
-    'description',
-    'coverUrl',
-    'coverSource',
-    'pageCount',
-    'publishedYear',
-  ]
+const REQUIRED_TEXT: BookField[] = ['titulo', 'quem_nome']
+const IDS: BookField[] = ['autor', 'categoria', 'midia']
+const OPTIONAL_TEXT: BookField[] = [
+  'porque',
+  'synopsis',
+  'isbn',
+  'cover_url',
+  'google_books_id',
+  'publisher',
+]
+const POSITIVE_INT: BookField[] = ['page_count', 'published_year']
 
-  const unknown = Object.keys(req.body).filter((k) => !allowed.includes(k))
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
+
+/** The one check for a book's fields, shared by create, replace and both edit routes; returns the sentence to show. */
+const bookFieldsError = (
+  body: Record<string, unknown>,
+  allowed: readonly string[],
+  required: readonly BookField[],
+): string | null => {
+  const unknown = Object.keys(body).filter((key) => !allowed.includes(key))
   if (unknown.length > 0) {
-    res.status(400).json({ error: `Campos não permitidos: ${unknown.join(', ')}.` })
-    return
+    console.warn('[validate] book fields not allowed:', unknown.join(', '))
+    return 'Não deu pra salvar o livro. Tente de novo.'
   }
 
-  for (const field of ['autor', 'categoria', 'midia'] as const) {
-    if (req.body[field] !== undefined && !isObjectId(req.body[field])) {
-      res.status(400).json({ error: `${field} deve ser um ObjectId válido.` })
-      return
-    }
-  }
+  const value = (field: BookField) =>
+    body[field] ?? body[Object.keys(ALIAS).find((alias) => ALIAS[alias] === field) ?? '']
 
-  if (req.body.subgeneros !== undefined) {
+  for (const field of required) {
+    if (IDS.includes(field) ? !isObjectId(value(field)) : !isString(value(field)))
+      return `Falta ${FIELD[field]}.`
+  }
+  for (const field of REQUIRED_TEXT) {
+    if (value(field) !== undefined && !isString(value(field))) return `Falta ${FIELD[field]}.`
+  }
+  for (const field of IDS) {
+    if (value(field) !== undefined && !isObjectId(value(field)))
+      return `${capitalize(FIELD[field])} não é válido.`
+  }
+  const subgeneros = body.subgeneros
+  if (
+    subgeneros !== undefined &&
+    (!Array.isArray(subgeneros) || subgeneros.some((id) => !isObjectId(id)))
+  ) {
+    return 'Algum subgênero não é válido.'
+  }
+  for (const field of OPTIONAL_TEXT) {
+    if (!isOptionalString(value(field))) return `${capitalize(FIELD[field])} precisa ser um texto.`
+  }
+  for (const field of POSITIVE_INT) {
+    const number = value(field)
     if (
-      !Array.isArray(req.body.subgeneros) ||
-      req.body.subgeneros.some((id: unknown) => !isObjectId(id))
+      number !== undefined &&
+      number !== null &&
+      !(Number.isInteger(number) && (number as number) > 0)
     ) {
-      res.status(400).json({ error: 'subgeneros deve ser uma lista de ObjectIds válidos.' })
-      return
+      return `${capitalize(FIELD[field])} precisa ser um número inteiro maior que zero.`
     }
   }
-
-  if (
-    req.body.cover_source !== undefined &&
-    !['manual', 'google', 'openlibrary'].includes(req.body.cover_source)
-  ) {
-    res.status(400).json({ error: 'cover_source deve ser manual, google ou openlibrary.' })
-    return
+  const source = value('cover_source')
+  if (source !== undefined && !['manual', 'google', 'openlibrary'].includes(source as string)) {
+    return 'A origem da capa não é válida.'
   }
-
-  if (
-    req.body.coverSource !== undefined &&
-    !['manual', 'google', 'openlibrary'].includes(req.body.coverSource)
-  ) {
-    res.status(400).json({ error: 'coverSource deve ser manual, google ou openlibrary.' })
-    return
-  }
-
-  if (!isOptionalString(req.body.cover_url) || !isOptionalString(req.body.coverUrl)) {
-    res.status(400).json({ error: 'cover_url/coverUrl deve ser string.' })
-    return
-  }
-
-  if (!isOptionalString(req.body.synopsis) || !isOptionalString(req.body.description)) {
-    res.status(400).json({ error: 'synopsis/description deve ser string.' })
-    return
-  }
-
-  next()
+  return null
 }
 
-export const validateReplaceBook = (req: AuthRequest, res: Response, next: NextFunction): void => {
-  const requiredObjectIds = ['autor', 'categoria', 'midia']
-  const requiredStrings = ['titulo', 'quem_nome']
+const ADMIN_FIELDS = [...Object.keys(FIELD), ...Object.keys(ALIAS)]
+// The owner edits every field of the book except who mentioned it and where the cover came from.
+const MEMBER_FIELDS = Object.keys(FIELD).filter(
+  (field) => !['quem_nome', 'cover_source', 'publisher'].includes(field),
+)
 
-  for (const field of requiredStrings) {
-    if (!isString(req.body[field])) {
-      res.status(400).json({ error: `${field} é obrigatório.` })
+const bookValidator =
+  (allowed: readonly string[], required: readonly BookField[]) =>
+  (req: AuthRequest, res: Response, next: NextFunction): void => {
+    const error = bookFieldsError(req.body, allowed, required)
+    if (error) {
+      res.status(400).json({ error })
       return
     }
+    next()
   }
 
-  for (const field of requiredObjectIds) {
-    if (!isObjectId(req.body[field])) {
-      res.status(400).json({ error: `${field} deve ser um ObjectId válido.` })
-      return
-    }
-  }
-
-  validateUpdateBook(req, res, next)
-}
+export const validateCreateBook = bookValidator(ADMIN_FIELDS, [
+  'titulo',
+  'autor',
+  'categoria',
+  'midia',
+  'quem_nome',
+])
+export const validateReplaceBook = bookValidator(ADMIN_FIELDS, [
+  'titulo',
+  'autor',
+  'categoria',
+  'midia',
+  'quem_nome',
+])
+export const validateUpdateBook = bookValidator(ADMIN_FIELDS, [])
+export const validateMemberUpdateBook = bookValidator(MEMBER_FIELDS, [])
 
 // ── Users ─────────────────────────────────────────────────────────
 
 export const validateUpdateRole = (req: AuthRequest, res: Response, next: NextFunction): void => {
   const { role } = req.body
   if (!['admin', 'editor', 'viewer'].includes(role)) {
-    res.status(400).json({ error: 'role deve ser admin, editor ou viewer.' })
+    res.status(400).json({ error: 'Esse nível não existe.' })
     return
   }
   next()
@@ -148,11 +154,11 @@ export const validateUpdateRole = (req: AuthRequest, res: Response, next: NextFu
 export const validateCreateNamed = (req: AuthRequest, res: Response, next: NextFunction): void => {
   const { nome } = req.body
   if (!isString(nome)) {
-    res.status(400).json({ error: 'nome é obrigatório.' })
+    res.status(400).json({ error: 'Falta o nome.' })
     return
   }
   if (nome.trim().length > 60) {
-    res.status(400).json({ error: 'nome deve ter no máximo 60 caracteres.' })
+    res.status(400).json({ error: 'O nome pode ter até 60 letras.' })
     return
   }
   next()
@@ -166,58 +172,8 @@ export const validateObjectId =
   (param: string) =>
   (req: AuthRequest, res: Response, next: NextFunction): void => {
     if (!isObjectId(req.params[param])) {
-      res.status(400).json({ error: `${param} inválido.` })
+      res.status(400).json({ error: 'Esse endereço não existe.' })
       return
     }
     next()
   }
-
-// ── Member book update (campos da menção original) ────────────────
-
-export const validateMemberUpdateBook = (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction,
-): void => {
-  const ALLOWED = ['titulo', 'autor', 'categoria', 'midia', 'subgeneros', 'porque', 'synopsis']
-
-  const unknown = Object.keys(req.body).filter((k) => !ALLOWED.includes(k))
-  if (unknown.length > 0) {
-    res.status(400).json({ error: `Campos não permitidos: ${unknown.join(', ')}.` })
-    return
-  }
-
-  if (req.body.titulo !== undefined && !isString(req.body.titulo)) {
-    res.status(400).json({ error: 'titulo é obrigatório e deve ser uma string não-vazia.' })
-    return
-  }
-
-  for (const field of ['autor', 'categoria', 'midia'] as const) {
-    if (req.body[field] !== undefined && !isObjectId(req.body[field])) {
-      res.status(400).json({ error: `${field} deve ser um ObjectId válido.` })
-      return
-    }
-  }
-
-  if (req.body.subgeneros !== undefined) {
-    if (
-      !Array.isArray(req.body.subgeneros) ||
-      req.body.subgeneros.some((id: unknown) => !isObjectId(id))
-    ) {
-      res.status(400).json({ error: 'subgeneros deve ser uma lista de ObjectIds válidos.' })
-      return
-    }
-  }
-
-  if (req.body.porque !== undefined && !isOptionalString(req.body.porque)) {
-    res.status(400).json({ error: 'porque deve ser uma string.' })
-    return
-  }
-
-  if (req.body.synopsis !== undefined && !isOptionalString(req.body.synopsis)) {
-    res.status(400).json({ error: 'synopsis deve ser uma string.' })
-    return
-  }
-
-  next()
-}

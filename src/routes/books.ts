@@ -14,25 +14,14 @@ import {
 import { Book } from '@/models/Book.js'
 import { ReadingStatus, type ReadingStatusValue } from '@/models/ReadingStatus.js'
 import type { AuthRequest } from '@/types/index.ts'
-import { withOrigin } from '@/utils/bookOrigin.js'
-import { fetchEnrichmentPayload, getCoverSourceFromEnrichment } from '@/utils/enrichment.js'
+import { markBookEdit, PANEL_TRACKED, recordBookEdit } from '@/utils/bookEdit.js'
+import {
+  fetchEnrichmentPayload,
+  getCoverSourceFromEnrichment,
+} from '@/utils/enrichment.js'
 import { handleDataError } from '@/utils/httpErrors.js'
 
 const router = Router()
-
-const ENRICHMENT_FIELDS = new Set([
-  'cover_url',
-  'cover_source',
-  'synopsis',
-  'publisher',
-  'isbn',
-  'page_count',
-  'published_year',
-  'google_books_id',
-])
-
-const hasEnrichmentEdit = (payload: Record<string, unknown>): boolean =>
-  Object.keys(payload).some((k) => ENRICHMENT_FIELDS.has(k))
 
 const normalizeBookInput = (body: Record<string, unknown>): Record<string, unknown> => {
   const normalized = { ...body }
@@ -61,17 +50,6 @@ const normalizeBookInput = (body: Record<string, unknown>): Record<string, unkno
   return normalized
 }
 
-const ensureCanEdit = (req: AuthRequest, res: Response, ownerUserId?: string): boolean => {
-  const user = req.user!
-  const isAdmin = user.role === 'admin'
-  const isOwner = ownerUserId !== undefined && ownerUserId === user._id.toString()
-
-  if (!isAdmin && !isOwner) {
-    res.status(403).json({ error: 'Você só pode corrigir os livros ligados ao seu nome.' })
-    return false
-  }
-  return true
-}
 
 // ── GET /books — público ──────────────────────────────────────────
 router.get('/', async (_req, res: Response) => {
@@ -81,11 +59,11 @@ router.get('/', async (_req, res: Response) => {
       .populate('categoria', 'nome slug')
       .populate('midia', 'nome slug')
       .populate('subgeneros', 'nome slug')
-      .populate('quem_user_id', 'name avatar_url')
+      .populate('quem_user_id', 'name')
       .sort({ added_at: -1 })
       .lean()
 
-    res.json(await withOrigin(books))
+    res.json(books)
   } catch (err) {
     console.error('[GET /books]', err)
     handleDataError(res, err, 'Não deu pra carregar os livros. Tente de novo.')
@@ -100,17 +78,16 @@ router.get('/:id', validateObjectId('id'), async (req: AuthRequest, res: Respons
       .populate('categoria', 'nome slug')
       .populate('midia', 'nome slug')
       .populate('subgeneros', 'nome slug')
-      .populate('quem_user_id', 'name avatar_url')
+      .populate('quem_user_id', 'name')
       .populate('added_by', 'name')
       .lean()
 
     if (!book) {
-      res.status(404).json({ error: 'Livro não encontrado.' })
+      res.status(404).json({ error: 'Não achamos esse livro. Ele pode ter saído do catálogo.' })
       return
     }
 
-    const [withOrigem] = await withOrigin([book])
-    res.json(withOrigem)
+    res.json(book)
   } catch (err) {
     console.error('[GET /books/:id]', err)
     handleDataError(res, err, 'Não deu pra abrir o livro. Tente de novo.')
@@ -167,47 +144,16 @@ router.put(
     try {
       const book = await Book.findById(req.params.id)
       if (!book) {
-        res.status(404).json({ error: 'Livro não encontrado.' })
+        res.status(404).json({ error: 'Não achamos esse livro. Ele pode ter saído do catálogo.' })
         return
       }
 
-      if (!ensureCanEdit(req, res, book.quem_user_id?.toString())) return
 
       const payload = normalizeBookInput(req.body)
       const user = req.user!
-      const now = new Date()
-      const trackable = [
-        'titulo',
-        'autor',
-        'categoria',
-        'midia',
-        'subgeneros',
-        'quem_nome',
-        'porque',
-        'isbn',
-        'cover_url',
-        'cover_source',
-        'synopsis',
-        'publisher',
-        'page_count',
-        'published_year',
-      ] as const
-
-      for (const field of trackable) {
-        if (payload[field] !== undefined && String(payload[field]) !== String(book[field])) {
-          book.edit_history.push({
-            field,
-            previous_value: String(book[field] ?? ''),
-            edited_at: now,
-            edited_by: user._id,
-          })
-        }
-      }
-
+      const marks = recordBookEdit(book, payload, user._id, PANEL_TRACKED)
       Object.assign(book, payload)
-
-      if (hasEnrichmentEdit(payload)) book.manually_edited_at = now
-      if (payload.cover_url !== undefined) book.cover_source = 'manual'
+      markBookEdit(book, payload, marks)
 
       await book.save()
       res.json(book)
@@ -230,47 +176,16 @@ router.patch(
     try {
       const book = await Book.findById(req.params.id)
       if (!book) {
-        res.status(404).json({ error: 'Livro não encontrado.' })
+        res.status(404).json({ error: 'Não achamos esse livro. Ele pode ter saído do catálogo.' })
         return
       }
 
-      if (!ensureCanEdit(req, res, book.quem_user_id?.toString())) return
 
       const user = req.user!
-      const now = new Date()
       const payload = normalizeBookInput(req.body)
-      const trackable = [
-        'titulo',
-        'autor',
-        'categoria',
-        'midia',
-        'subgeneros',
-        'quem_nome',
-        'porque',
-        'isbn',
-        'cover_url',
-        'cover_source',
-        'synopsis',
-        'publisher',
-        'page_count',
-        'published_year',
-      ] as const
-
-      for (const field of trackable) {
-        if (payload[field] !== undefined && String(payload[field]) !== String(book[field])) {
-          book.edit_history.push({
-            field,
-            previous_value: String(book[field] ?? ''),
-            edited_at: now,
-            edited_by: user._id,
-          })
-        }
-      }
-
+      const marks = recordBookEdit(book, payload, user._id, PANEL_TRACKED)
       Object.assign(book, payload)
-
-      if (hasEnrichmentEdit(payload)) book.manually_edited_at = now
-      if (payload.cover_url !== undefined) book.cover_source = 'manual'
+      markBookEdit(book, payload, marks)
 
       await book.save()
 
@@ -298,24 +213,23 @@ router.post(
         .lean()
 
       if (!book) {
-        res.status(404).json({ error: 'Livro não encontrado.' })
+        res.status(404).json({ error: 'Não achamos esse livro. Ele pode ter saído do catálogo.' })
         return
       }
 
-      if (!ensureCanEdit(req, res, book.quem_user_id?.toString())) return
 
       const authorName =
         typeof book.autor === 'object' && book.autor && 'nome' in book.autor
           ? book.autor.nome
           : null
       if (!authorName) {
-        res.status(400).json({ error: 'Livro sem autor válido para enriquecimento.' })
+        res.status(400).json({ error: 'Falta o autor para procurar.' })
         return
       }
 
       const enrichment = await fetchEnrichmentPayload(book.titulo, authorName, book.isbn)
       if (!enrichment?.data) {
-        res.status(404).json({ error: 'Nenhum dado de enriquecimento encontrado para este livro.' })
+        res.status(404).json({ error: 'Não achamos capa nem dados para este livro.' })
         return
       }
 
@@ -365,7 +279,7 @@ router.post(
         fields.some((field) => !allowedFields.includes(field))
       ) {
         res.status(400).json({
-          error: `fields deve ser lista não-vazia com valores permitidos: ${allowedFields.join(', ')}.`,
+          error: 'Marque o que você quer usar no livro.',
         })
         return
       }
@@ -375,11 +289,10 @@ router.post(
         'nome',
       )
       if (!book) {
-        res.status(404).json({ error: 'Livro não encontrado.' })
+        res.status(404).json({ error: 'Não achamos esse livro. Ele pode ter saído do catálogo.' })
         return
       }
 
-      if (!ensureCanEdit(req, res, book.quem_user_id?.toString())) return
 
       if (book.manually_edited_at) {
         res.status(409).json({
@@ -394,13 +307,13 @@ router.post(
           ? book.autor.nome
           : null
       if (!authorName) {
-        res.status(400).json({ error: 'Livro sem autor válido para enriquecimento.' })
+        res.status(400).json({ error: 'Falta o autor para procurar.' })
         return
       }
 
       const enrichment = await fetchEnrichmentPayload(book.titulo, authorName, book.isbn)
       if (!enrichment?.data) {
-        res.status(404).json({ error: 'Nenhum dado de enriquecimento encontrado para este livro.' })
+        res.status(404).json({ error: 'Não achamos capa nem dados para este livro.' })
         return
       }
 
@@ -437,7 +350,7 @@ router.post(
       })
     } catch (err) {
       console.error('[POST /books/:id/enrich/apply]', err)
-      handleDataError(res, err, 'Não deu pra aplicar os dados. Tente de novo.')
+      handleDataError(res, err, 'Não deu pra salvar os dados no livro. Tente de novo.')
     }
   },
 )
@@ -453,7 +366,7 @@ router.delete(
     try {
       const book = await Book.findByIdAndDelete(req.params.id)
       if (!book) {
-        res.status(404).json({ error: 'Livro não encontrado.' })
+        res.status(404).json({ error: 'Não achamos esse livro. Ele pode ter saído do catálogo.' })
         return
       }
 

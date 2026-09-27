@@ -39,12 +39,12 @@ router.put(
     try {
       const status = req.body?.status
       if (!isReadingStatus(status)) {
-        res.status(400).json({ error: `status deve ser um de: ${READING_STATUSES.join(', ')}.` })
+        res.status(400).json({ error: 'Não deu pra salvar na sua lista. Tente de novo.' })
         return
       }
 
       if (!(await Book.exists({ _id: req.params.bookId }))) {
-        res.status(404).json({ error: 'Livro não encontrado.' })
+        res.status(404).json({ error: 'Não achamos esse livro. Ele pode ter saído do catálogo.' })
         return
       }
 

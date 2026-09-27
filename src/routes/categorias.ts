@@ -69,7 +69,7 @@ router.patch(
         { new: true },
       )
       if (!categoria) {
-        res.status(404).json({ error: 'Gênero não encontrado.' })
+        res.status(404).json({ error: 'Não achamos esse gênero.' })
         return
       }
 
@@ -98,7 +98,7 @@ router.delete(
       }
       const categoria = await Categoria.findByIdAndDelete(req.params.id)
       if (!categoria) {
-        res.status(404).json({ error: 'Gênero não encontrado.' })
+        res.status(404).json({ error: 'Não achamos esse gênero.' })
         return
       }
       console.log(`[DELETE /categorias/:id] "${categoria.nome}" removida por ${req.user!.email}`)

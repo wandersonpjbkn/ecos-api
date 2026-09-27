@@ -3,6 +3,31 @@ import { fetchOpenLibrary } from '@/utils/openLibrary.js'
 
 export type EnrichmentSource = 'google_books' | 'open_library'
 
+// A person changed one of these by hand: the automatic search then leaves the book alone (manually_edited_at).
+const ENRICHMENT_FIELDS = new Set([
+  'cover_url',
+  'cover_source',
+  'synopsis',
+  'publisher',
+  'isbn',
+  'page_count',
+  'published_year',
+  'google_books_id',
+])
+
+// null, undefined and '' are the same empty value: comparing them raw writes history for edits nobody made.
+export const differs = (next: unknown, current: unknown) => String(next ?? '') !== String(current ?? '')
+
+// Compared with the stored book, not just present: an edit form sends back every field it loaded.
+export const hasEnrichmentEdit = (payload: Record<string, unknown>, current: object): boolean =>
+  Object.keys(payload).some(
+    (k) => ENRICHMENT_FIELDS.has(k) && differs(payload[k], (current as Record<string, unknown>)[k]),
+  )
+
+export const changesCover = (payload: Record<string, unknown>, current: object): boolean =>
+  payload.cover_url !== undefined &&
+  differs(payload.cover_url, (current as Record<string, unknown>).cover_url)
+
 export interface EnrichmentPayload {
   data: Awaited<ReturnType<typeof fetchGoogleBooks>> | Awaited<ReturnType<typeof fetchOpenLibrary>>
   source: EnrichmentSource
