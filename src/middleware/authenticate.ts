@@ -62,21 +62,23 @@ export const authenticate = async (
   }
 
   try {
-    let user = await User.findOne({ supabase_uid: payload.sub })
+    // Atomic: a first access sends two verifies together; find-then-create would collide on the unique index.
+    const result = await User.findOneAndUpdate(
+      { supabase_uid: payload.sub },
+      {
+        $set: { last_seen_at: new Date() },
+        $setOnInsert: {
+          email: payload.email,
+          name: payload.email.split('@')[0],
+          role: 'viewer',
+        },
+      },
+      { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true, includeResultMetadata: true },
+    )
+    const user = result.value!
 
-    if (!user) {
-      user = await User.create({
-        supabase_uid: payload.sub,
-        email: payload.email,
-        name: payload.email.split('@')[0],
-        role: 'viewer',
-        last_seen_at: new Date(),
-      })
+    if (!result.lastErrorObject?.updatedExisting) {
       console.log(`[authenticate] Novo usuário criado: ${user.email} (viewer)`)
-    } else {
-      User.updateOne({ _id: user._id }, { last_seen_at: new Date() })
-        .exec()
-        .catch(() => null)
     }
 
     req.user = {
