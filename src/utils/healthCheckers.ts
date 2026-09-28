@@ -14,11 +14,11 @@ const SUPABASE_HEALTH_TIMEOUT_MS = 5_000
  */
 export const checkSupabaseAuth = async (): Promise<void> => {
   const url = process.env.SUPABASE_URL
-  const anonKey = process.env.SUPABASE_ANON_KEY
+  const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY
   const email = process.env.SUPABASE_KEEPALIVE_EMAIL
   const password = process.env.SUPABASE_KEEPALIVE_PASSWORD
 
-  if (!url || !anonKey || !email || !password) {
+  if (!url || !publishableKey || !email || !password) {
     throw new Error('Supabase keep-alive credentials not configured')
   }
 
@@ -26,7 +26,7 @@ export const checkSupabaseAuth = async (): Promise<void> => {
   const timeoutId = setTimeout(() => controller.abort(), SUPABASE_HEALTH_TIMEOUT_MS)
 
   const baseHeaders = {
-    apikey: anonKey,
+    apikey: publishableKey,
     'Content-Type': 'application/json',
   }
 
