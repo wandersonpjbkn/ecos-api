@@ -25,7 +25,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     res.json(entries)
   } catch (err) {
     console.error('[GET /users/me/reading]', err)
-    handleDataError(res, err, 'Não deu pra abrir sua lista. Tente de novo.')
+    handleDataError(res, err, 'Não foi possível abrir sua lista. Tente de novo.')
   }
 })
 
@@ -39,7 +39,7 @@ router.put(
     try {
       const status = req.body?.status
       if (!isReadingStatus(status)) {
-        res.status(400).json({ error: 'Não deu pra salvar na sua lista. Tente de novo.' })
+        res.status(400).json({ error: 'Não foi possível salvar na sua lista. Tente de novo.' })
         return
       }
 
@@ -63,7 +63,7 @@ router.put(
       res.json(entry)
     } catch (err) {
       console.error('[PUT /users/me/reading/:bookId]', err)
-      handleDataError(res, err, 'Não deu pra salvar na sua lista. Tente de novo.')
+      handleDataError(res, err, 'Não foi possível salvar na sua lista. Tente de novo.')
     }
   },
 )
@@ -80,7 +80,7 @@ router.delete(
       res.status(204).end()
     } catch (err) {
       console.error('[DELETE /users/me/reading/:bookId]', err)
-      handleDataError(res, err, 'Não deu pra tirar da sua lista. Tente de novo.')
+      handleDataError(res, err, 'Não foi possível tirar da sua lista. Tente de novo.')
     }
   },
 )

@@ -21,7 +21,7 @@ router.get('/', async (_req, res: Response) => {
     res.json({ permissions, configurable: CONFIGURABLE })
   } catch (err) {
     console.error('[GET /permissions]', err)
-    handleDataError(res, err, 'Não deu pra carregar as permissões. Tente de novo.')
+    handleDataError(res, err, 'Não foi possível carregar as permissões. Tente de novo.')
   }
 })
 
@@ -38,17 +38,17 @@ router.put(
 
       // Validações
       if (!['admin', 'editor', 'viewer'].includes(role as string)) {
-        res.status(400).json({ error: 'Não deu pra salvar a permissão. Tente de novo.' })
+        res.status(400).json({ error: 'Não foi possível salvar a permissão. Tente de novo.' })
         return
       }
 
       if (!RESOURCES.includes(resource as never)) {
-        res.status(400).json({ error: 'Não deu pra salvar a permissão. Tente de novo.' })
+        res.status(400).json({ error: 'Não foi possível salvar a permissão. Tente de novo.' })
         return
       }
 
       if (!Array.isArray(actions) || actions.some((a) => !ACTIONS.includes(a as Action))) {
-        res.status(400).json({ error: 'Não deu pra salvar a permissão. Tente de novo.' })
+        res.status(400).json({ error: 'Não foi possível salvar a permissão. Tente de novo.' })
         return
       }
 
@@ -83,7 +83,7 @@ router.put(
       res.json(permission)
     } catch (err) {
       console.error('[PUT /permissions/:role/:resource]', err)
-      handleDataError(res, err, 'Não deu pra salvar a permissão. Tente de novo.')
+      handleDataError(res, err, 'Não foi possível salvar a permissão. Tente de novo.')
     }
   },
 )

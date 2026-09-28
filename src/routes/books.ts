@@ -15,6 +15,7 @@ import { Book } from '@/models/Book.js'
 import { ReadingStatus, type ReadingStatusValue } from '@/models/ReadingStatus.js'
 import type { AuthRequest } from '@/types/index.ts'
 import { markBookEdit, PANEL_TRACKED, recordBookEdit } from '@/utils/bookEdit.js'
+import { applyBookPerson, creditablePeople } from '@/utils/bookPerson.js'
 import {
   fetchEnrichmentPayload,
   getCoverSourceFromEnrichment,
@@ -66,7 +67,16 @@ router.get('/', async (_req, res: Response) => {
     res.json(books)
   } catch (err) {
     console.error('[GET /books]', err)
-    handleDataError(res, err, 'Não deu pra carregar os livros. Tente de novo.')
+    handleDataError(res, err, 'Não foi possível carregar os livros. Tente de novo.')
+  }
+})
+
+// ── GET /books/people ──
+router.get('/people', authenticate, authorize('books', 'create'), async (_req: AuthRequest, res: Response) => {
+  try {
+    res.json(await creditablePeople())
+  } catch (err) {
+    handleDataError(res, err, 'Não foi possível carregar a lista de pessoas. Tente de novo.')
   }
 })
 
@@ -90,7 +100,7 @@ router.get('/:id', validateObjectId('id'), async (req: AuthRequest, res: Respons
     res.json(book)
   } catch (err) {
     console.error('[GET /books/:id]', err)
-    handleDataError(res, err, 'Não deu pra abrir o livro. Tente de novo.')
+    handleDataError(res, err, 'Não foi possível abrir o livro. Tente de novo.')
   }
 })
 
@@ -107,7 +117,7 @@ router.get('/:id/reading', validateObjectId('id'), async (req: AuthRequest, res:
     res.json({ quero_ler: count('quero_ler'), lido: count('lido') })
   } catch (err) {
     console.error('[GET /books/:id/reading]', err)
-    handleDataError(res, err, 'Não deu pra carregar quem marcou este livro. Tente de novo.')
+    handleDataError(res, err, 'Não foi possível carregar quem marcou este livro. Tente de novo.')
   }
 })
 
@@ -120,14 +130,16 @@ router.post(
   validateCreateBook,
   async (req: AuthRequest, res: Response) => {
     try {
+      const user = req.user!
       const payload = normalizeBookInput(req.body)
-      const book = await Book.create({ ...payload, added_by: req.user!._id, edit_history: [] })
+      await applyBookPerson(payload, user)
+      const book = await Book.create({ ...payload, added_by: user._id, edit_history: [] })
 
       console.log(`[POST /books] "${book.titulo}" criado por ${req.user!.email}`)
       res.status(201).json(book)
     } catch (err) {
       console.error('[POST /books]', err)
-      handleDataError(res, err, 'Não deu pra criar o livro. Tente de novo.')
+      handleDataError(res, err, 'Não foi possível criar o livro. Tente de novo.')
     }
   },
 )
@@ -151,6 +163,7 @@ router.put(
 
       const payload = normalizeBookInput(req.body)
       const user = req.user!
+      await applyBookPerson(payload, user, book)
       const marks = recordBookEdit(book, payload, user._id, PANEL_TRACKED)
       Object.assign(book, payload)
       markBookEdit(book, payload, marks)
@@ -159,7 +172,7 @@ router.put(
       res.json(book)
     } catch (err) {
       console.error('[PUT /books/:id]', err)
-      handleDataError(res, err, 'Não deu pra salvar o livro. Tente de novo.')
+      handleDataError(res, err, 'Não foi possível salvar o livro. Tente de novo.')
     }
   },
 )
@@ -183,6 +196,7 @@ router.patch(
 
       const user = req.user!
       const payload = normalizeBookInput(req.body)
+      await applyBookPerson(payload, user, book)
       const marks = recordBookEdit(book, payload, user._id, PANEL_TRACKED)
       Object.assign(book, payload)
       markBookEdit(book, payload, marks)
@@ -193,7 +207,7 @@ router.patch(
       res.json(book)
     } catch (err) {
       console.error('[PATCH /books/:id]', err)
-      handleDataError(res, err, 'Não deu pra salvar o livro. Tente de novo.')
+      handleDataError(res, err, 'Não foi possível salvar o livro. Tente de novo.')
     }
   },
 )
@@ -248,7 +262,7 @@ router.post(
       })
     } catch (err) {
       console.error('[POST /books/:id/enrich]', err)
-      handleDataError(res, err, 'Não deu pra buscar os dados do livro. Tente de novo.')
+      handleDataError(res, err, 'Não foi possível buscar os dados do livro. Tente de novo.')
     }
   },
 )
@@ -350,7 +364,7 @@ router.post(
       })
     } catch (err) {
       console.error('[POST /books/:id/enrich/apply]', err)
-      handleDataError(res, err, 'Não deu pra salvar os dados no livro. Tente de novo.')
+      handleDataError(res, err, 'Não foi possível salvar os dados no livro. Tente de novo.')
     }
   },
 )
@@ -377,7 +391,7 @@ router.delete(
       res.status(204).send()
     } catch (err) {
       console.error('[DELETE /books/:id]', err)
-      handleDataError(res, err, 'Não deu pra remover o livro. Tente de novo.')
+      handleDataError(res, err, 'Não foi possível remover o livro. Tente de novo.')
     }
   },
 )

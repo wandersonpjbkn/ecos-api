@@ -20,7 +20,7 @@ router.get('/', authorize('subgeneros', 'read'), async (_req, res: Response) => 
     res.json(subgeneros)
   } catch (err) {
     console.error('[GET /subgeneros]', err)
-    handleDataError(res, err, 'Não deu pra carregar os subgêneros. Tente de novo.')
+    handleDataError(res, err, 'Não foi possível carregar os subgêneros. Tente de novo.')
   }
 })
 
@@ -50,7 +50,7 @@ router.post(
       res.status(201).json(subgenero)
     } catch (err) {
       console.error('[POST /subgeneros]', err)
-      handleDataError(res, err, 'Não deu pra criar o subgênero. Tente de novo.')
+      handleDataError(res, err, 'Não foi possível criar o subgênero. Tente de novo.')
     }
   },
 )
@@ -86,7 +86,7 @@ router.patch(
       res.json(subgenero)
     } catch (err) {
       console.error('[PATCH /subgeneros/:id]', err)
-      handleDataError(res, err, 'Não deu pra salvar o subgênero. Tente de novo.')
+      handleDataError(res, err, 'Não foi possível salvar o subgênero. Tente de novo.')
     }
   },
 )
@@ -108,7 +108,7 @@ router.delete(
       res.status(204).send()
     } catch (err) {
       console.error('[DELETE /subgeneros/:id]', err)
-      handleDataError(res, err, 'Não deu pra remover o subgênero. Tente de novo.')
+      handleDataError(res, err, 'Não foi possível remover o subgênero. Tente de novo.')
     }
   },
 )

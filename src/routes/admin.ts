@@ -2,7 +2,7 @@ import { Router } from 'express'
 import type { Response } from 'express'
 
 import { authenticate } from '@/middleware/authenticate.js'
-import { adminOnly } from '@/middleware/authorize.js'
+import { adminOnly, authorize } from '@/middleware/authorize.js'
 import { authRateLimit, enrichmentRateLimit } from '@/middleware/rateLimit.js'
 import { Book } from '@/models/Book.js'
 import { ClaimHistory } from '@/models/ClaimHistory.js'
@@ -14,16 +14,18 @@ import { handleDataError } from '@/utils/httpErrors.js'
 
 const router = Router()
 
-router.use(authenticate, adminOnly)
+// Capas e sinopses follows the matrix (enrichment: update); the claims history stays with the Administrador.
+router.use(authenticate)
 
 // ── POST /admin/books/enrich ──────────────────────────────────────
 router.post(
   '/books/enrich',
+  authorize('enrichment', 'update'),
   authRateLimit,
   enrichmentRateLimit,
   async (req: AuthRequest, res: Response) => {
     if (req.body?.force !== undefined && typeof req.body.force !== 'boolean') {
-      res.status(400).json({ error: 'Não deu pra buscar os dados. Tente de novo.' })
+      res.status(400).json({ error: 'Não foi possível buscar os dados. Tente de novo.' })
       return
     }
 
@@ -201,13 +203,13 @@ router.post(
       })
     } catch (err) {
       console.error('[POST /admin/books/enrich]', err)
-      handleDataError(res, err, 'Não deu pra buscar os dados dos livros. Tente de novo.')
+      handleDataError(res, err, 'Não foi possível buscar os dados dos livros. Tente de novo.')
     }
   },
 )
 
 // ── GET /admin/books/enrich/status ────────────────────────────────
-router.get('/books/enrich/status', authRateLimit, async (_req: AuthRequest, res: Response) => {
+router.get('/books/enrich/status', authRateLimit, authorize('enrichment', 'update'), async (_req: AuthRequest, res: Response) => {
   try {
     const [total, withCover, lastEnriched] = await Promise.all([
       Book.countDocuments(),
@@ -227,12 +229,12 @@ router.get('/books/enrich/status', authRateLimit, async (_req: AuthRequest, res:
     })
   } catch (err) {
     console.error('[GET /admin/books/enrich/status]', err)
-    handleDataError(res, err, 'Não deu pra carregar o que já foi feito. Tente de novo.')
+    handleDataError(res, err, 'Não foi possível carregar o que já foi feito. Tente de novo.')
   }
 })
 
 // ── GET /admin/books/enrich/history ───────────────────────────────
-router.get('/books/enrich/history', authRateLimit, async (req: AuthRequest, res: Response) => {
+router.get('/books/enrich/history', authRateLimit, authorize('enrichment', 'update'), async (req: AuthRequest, res: Response) => {
   try {
     const parsedLimit = Number(req.query.limit ?? 10)
     const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 50) : 10
@@ -248,12 +250,12 @@ router.get('/books/enrich/history', authRateLimit, async (req: AuthRequest, res:
     res.json({ total_runs: history.length, history })
   } catch (err) {
     console.error('[GET /admin/books/enrich/history]', err)
-    handleDataError(res, err, 'Não deu pra carregar o histórico. Tente de novo.')
+    handleDataError(res, err, 'Não foi possível carregar o histórico. Tente de novo.')
   }
 })
 
 // ── GET /admin/users/claims/history ──────────────────────────────
-router.get('/users/claims/history', authRateLimit, async (req: AuthRequest, res: Response) => {
+router.get('/users/claims/history', authRateLimit, adminOnly, async (req: AuthRequest, res: Response) => {
   try {
     const parsedLimit = Number(req.query.limit ?? 20)
     const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 500) : 20
@@ -285,7 +287,7 @@ router.get('/users/claims/history', authRateLimit, async (req: AuthRequest, res:
     })
   } catch (err) {
     console.error('[GET /admin/users/claims/history]', err)
-    handleDataError(res, err, 'Não deu pra carregar o histórico de vínculos. Tente de novo.')
+    handleDataError(res, err, 'Não foi possível carregar o histórico de vínculos. Tente de novo.')
   }
 })
 

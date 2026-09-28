@@ -17,6 +17,7 @@ import { User } from '@/models/User.js'
 import readingRoutes from '@/routes/reading.js'
 import type { AuthRequest } from '@/types/index.ts'
 import { markBookEdit, OWNER_TRACKED, recordBookEdit } from '@/utils/bookEdit.js'
+import { claimMatch } from '@/utils/bookPerson.js'
 import { handleDataError } from '@/utils/httpErrors.js'
 
 const router = Router()
@@ -43,7 +44,7 @@ router.get('/', authorize('users', 'read'), async (_req, res: Response) => {
     res.json(users)
   } catch (err) {
     console.error('[GET /users]', err)
-    handleDataError(res, err, 'Não deu pra carregar os membros. Tente de novo.')
+    handleDataError(res, err, 'Não foi possível carregar os membros. Tente de novo.')
   }
 })
 
@@ -55,10 +56,10 @@ router.get('/me', async (req: AuthRequest, res: Response) => {
       .select('resource actions -_id')
       .lean()
     const permissions = Object.fromEntries(rows.map((row) => [row.resource, row.actions]))
-    res.json({ user: req.user, permissions })
+    res.json({ user: req.user, permissions, claim_match: await claimMatch(req.user!) })
   } catch (err) {
     console.error('[GET /users/me]', err)
-    handleDataError(res, err, 'Não deu pra carregar sua conta. Tente de novo.')
+    handleDataError(res, err, 'Não foi possível carregar sua conta. Tente de novo.')
   }
 })
 
@@ -89,12 +90,12 @@ router.get('/me/claim', async (req: AuthRequest, res: Response) => {
     })
   } catch (err) {
     console.error('[GET /users/me/claim]', err)
-    handleDataError(res, err, 'Não deu pra carregar seu vínculo. Tente de novo.')
+    handleDataError(res, err, 'Não foi possível carregar seu vínculo. Tente de novo.')
   }
 })
 
 // ── POST /users/me/claim ─────────────────────────────────────────
-router.post('/me/claim', authRateLimit, writeRateLimit, async (req: AuthRequest, res: Response) => {
+router.post('/me/claim', authRateLimit, writeRateLimit, authorize('claim', 'update'), async (req: AuthRequest, res: Response) => {
   try {
     const rawName = req.body?.quem_nome
     if (typeof rawName !== 'string' || rawName.trim().length === 0) {
@@ -184,7 +185,7 @@ router.post('/me/claim', authRateLimit, writeRateLimit, async (req: AuthRequest,
     })
   } catch (err) {
     console.error('[POST /users/me/claim]', err)
-    handleDataError(res, err, 'Não deu pra vincular o nome. Tente de novo.')
+    handleDataError(res, err, 'Não foi possível vincular o nome. Tente de novo.')
   }
 })
 
@@ -193,6 +194,7 @@ router.delete(
   '/me/claim',
   authRateLimit,
   writeRateLimit,
+  authorize('claim', 'update'),
   async (req: AuthRequest, res: Response) => {
     try {
       const user = req.user!
@@ -203,8 +205,9 @@ router.delete(
         return
       }
 
+      // Only the claimed placeholder's books go back to it; a book credited to the account itself stays credited.
       const result = await Book.updateMany(
-        { quem_user_id: user._id },
+        { quem_user_id: user._id, quem_nome: { $in: currentClaims } },
         { $unset: { quem_user_id: '' } },
       )
 
@@ -224,7 +227,7 @@ router.delete(
       })
     } catch (err) {
       console.error('[DELETE /users/me/claim]', err)
-      handleDataError(res, err, 'Não deu pra desfazer o vínculo. Tente de novo.')
+      handleDataError(res, err, 'Não foi possível desfazer o vínculo. Tente de novo.')
     }
   },
 )
@@ -274,7 +277,7 @@ router.patch(
       res.json(book)
     } catch (err) {
       console.error('[PATCH /users/me/books/:id]', err)
-      handleDataError(res, err, 'Não deu pra salvar o livro. Tente de novo.')
+      handleDataError(res, err, 'Não foi possível salvar o livro. Tente de novo.')
     }
   },
 )
@@ -309,7 +312,7 @@ router.patch(
       res.json(user)
     } catch (err) {
       console.error('[PATCH /users/:id/role]', err)
-      handleDataError(res, err, 'Não deu pra mudar o nível. Tente de novo.')
+      handleDataError(res, err, 'Não foi possível mudar o nível. Tente de novo.')
     }
   },
 )
@@ -321,7 +324,7 @@ router.patch('/me', authRateLimit, writeRateLimit, async (req: AuthRequest, res:
     const update: { name?: string; hidden_midias?: string[] } = {}
 
     if (name === undefined && hidden_midias === undefined) {
-      res.status(400).json({ error: 'Não deu pra salvar. Tente de novo.' })
+      res.status(400).json({ error: 'Não foi possível salvar. Tente de novo.' })
       return
     }
 
@@ -341,7 +344,7 @@ router.patch('/me', authRateLimit, writeRateLimit, async (req: AuthRequest, res:
 
     if (hidden_midias !== undefined) {
       if (!Array.isArray(hidden_midias) || hidden_midias.some((m) => typeof m !== 'string')) {
-        res.status(400).json({ error: 'Não deu pra salvar seus formatos. Tente de novo.' })
+        res.status(400).json({ error: 'Não foi possível salvar seus formatos. Tente de novo.' })
         return
       }
 
@@ -363,7 +366,7 @@ router.patch('/me', authRateLimit, writeRateLimit, async (req: AuthRequest, res:
     res.json(user)
   } catch (err) {
     console.error('[PATCH /users/me]', err)
-    handleDataError(res, err, 'Não deu pra salvar. Tente de novo.')
+    handleDataError(res, err, 'Não foi possível salvar. Tente de novo.')
   }
 })
 

@@ -10,6 +10,7 @@ export const PANEL_TRACKED = [
   'midia',
   'subgeneros',
   'quem_nome',
+  'quem_user_id',
   'porque',
   'isbn',
   'cover_url',

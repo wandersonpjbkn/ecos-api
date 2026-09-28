@@ -20,7 +20,7 @@ router.get('/', authorize('midias', 'read'), async (_req, res: Response) => {
     res.json(midias)
   } catch (err) {
     console.error('[GET /midias]', err)
-    handleDataError(res, err, 'Não deu pra carregar os formatos. Tente de novo.')
+    handleDataError(res, err, 'Não foi possível carregar os formatos. Tente de novo.')
   }
 })
 
@@ -46,7 +46,7 @@ router.post(
       res.status(201).json(midia)
     } catch (err) {
       console.error('[POST /midias]', err)
-      handleDataError(res, err, 'Não deu pra criar o formato. Tente de novo.')
+      handleDataError(res, err, 'Não foi possível criar o formato. Tente de novo.')
     }
   },
 )
@@ -78,7 +78,7 @@ router.patch(
       res.json(midia)
     } catch (err) {
       console.error('[PATCH /midias/:id]', err)
-      handleDataError(res, err, 'Não deu pra salvar o formato. Tente de novo.')
+      handleDataError(res, err, 'Não foi possível salvar o formato. Tente de novo.')
     }
   },
 )
@@ -109,7 +109,7 @@ router.delete(
       res.status(204).send()
     } catch (err) {
       console.error('[DELETE /midias/:id]', err)
-      handleDataError(res, err, 'Não deu pra remover o formato. Tente de novo.')
+      handleDataError(res, err, 'Não foi possível remover o formato. Tente de novo.')
     }
   },
 )

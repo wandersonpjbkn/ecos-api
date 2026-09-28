@@ -34,7 +34,7 @@ export const authorize =
       next()
     } catch (err) {
       console.error('[authorize] Erro ao verificar permissões:', err)
-      handleDataError(res, err, 'Não deu pra verificar as permissões. Tente de novo.')
+      handleDataError(res, err, 'Não foi possível verificar as permissões. Tente de novo.')
     }
   }
 

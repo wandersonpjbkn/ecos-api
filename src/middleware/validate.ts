@@ -15,6 +15,7 @@ const FIELD = {
   categoria: 'o gênero',
   midia: 'o formato',
   quem_nome: 'quem mencionou',
+  quem_user_id: 'quem mencionou',
   subgeneros: 'os subgêneros',
   porque: 'o comentário',
   synopsis: 'a sinopse',
@@ -37,7 +38,7 @@ const ALIAS: Record<string, BookField> = {
   publishedYear: 'published_year',
 }
 
-const REQUIRED_TEXT: BookField[] = ['titulo', 'quem_nome']
+const REQUIRED_TEXT: BookField[] = ['titulo']
 const IDS: BookField[] = ['autor', 'categoria', 'midia']
 const OPTIONAL_TEXT: BookField[] = [
   'porque',
@@ -60,7 +61,7 @@ const bookFieldsError = (
   const unknown = Object.keys(body).filter((key) => !allowed.includes(key))
   if (unknown.length > 0) {
     console.warn('[validate] book fields not allowed:', unknown.join(', '))
-    return 'Não deu pra salvar o livro. Tente de novo.'
+    return 'Não foi possível salvar o livro. Tente de novo.'
   }
 
   const value = (field: BookField) =>
@@ -77,6 +78,10 @@ const bookFieldsError = (
     if (value(field) !== undefined && !isObjectId(value(field)))
       return `${capitalize(FIELD[field])} não é válido.`
   }
+  // Who mentioned: an account id or a placeholder name, both optional (a new book defaults to whoever adds it).
+  const userId = body.quem_user_id
+  if (userId !== undefined && userId !== null && userId !== '' && !isObjectId(userId)) return 'Escolha alguém da lista.'
+  if (!isOptionalString(body.quem_nome)) return 'Escolha alguém da lista.'
   const subgeneros = body.subgeneros
   if (
     subgeneros !== undefined &&
@@ -107,7 +112,7 @@ const bookFieldsError = (
 const ADMIN_FIELDS = [...Object.keys(FIELD), ...Object.keys(ALIAS)]
 // The owner edits every field of the book except who mentioned it and where the cover came from.
 const MEMBER_FIELDS = Object.keys(FIELD).filter(
-  (field) => !['quem_nome', 'cover_source', 'publisher'].includes(field),
+  (field) => !['quem_nome', 'quem_user_id', 'cover_source', 'publisher'].includes(field),
 )
 
 const bookValidator =
@@ -121,20 +126,8 @@ const bookValidator =
     next()
   }
 
-export const validateCreateBook = bookValidator(ADMIN_FIELDS, [
-  'titulo',
-  'autor',
-  'categoria',
-  'midia',
-  'quem_nome',
-])
-export const validateReplaceBook = bookValidator(ADMIN_FIELDS, [
-  'titulo',
-  'autor',
-  'categoria',
-  'midia',
-  'quem_nome',
-])
+export const validateCreateBook = bookValidator(ADMIN_FIELDS, ['titulo', 'autor', 'categoria', 'midia'])
+export const validateReplaceBook = bookValidator(ADMIN_FIELDS, ['titulo', 'autor', 'categoria', 'midia'])
 export const validateUpdateBook = bookValidator(ADMIN_FIELDS, [])
 export const validateMemberUpdateBook = bookValidator(MEMBER_FIELDS, [])
 

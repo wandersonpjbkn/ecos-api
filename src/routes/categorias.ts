@@ -18,7 +18,7 @@ router.get('/', authorize('categorias', 'read'), async (_req, res: Response) => 
     res.json(await Categoria.find().sort({ nome: 1 }).lean())
   } catch (err) {
     console.error('[GET /categorias]', err)
-    handleDataError(res, err, 'Não deu pra carregar os gêneros. Tente de novo.')
+    handleDataError(res, err, 'Não foi possível carregar os gêneros. Tente de novo.')
   }
 })
 
@@ -41,7 +41,7 @@ router.post(
       res.status(201).json(categoria)
     } catch (err) {
       console.error('[POST /categorias]', err)
-      handleDataError(res, err, 'Não deu pra criar o gênero. Tente de novo.')
+      handleDataError(res, err, 'Não foi possível criar o gênero. Tente de novo.')
     }
   },
 )
@@ -77,7 +77,7 @@ router.patch(
       res.json(categoria)
     } catch (err) {
       console.error('[PATCH /categorias/:id]', err)
-      handleDataError(res, err, 'Não deu pra salvar o gênero. Tente de novo.')
+      handleDataError(res, err, 'Não foi possível salvar o gênero. Tente de novo.')
     }
   },
 )
@@ -105,7 +105,7 @@ router.delete(
       res.status(204).send()
     } catch (err) {
       console.error('[DELETE /categorias/:id]', err)
-      handleDataError(res, err, 'Não deu pra remover o gênero. Tente de novo.')
+      handleDataError(res, err, 'Não foi possível remover o gênero. Tente de novo.')
     }
   },
 )

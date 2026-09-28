@@ -7,8 +7,8 @@ export interface IBook {
   categoria: Types.ObjectId // ref → Categoria
   midia: Types.ObjectId // ref → Midia
   subgeneros: Types.ObjectId[] // refs → Subgenero
-  quem_nome: string // valor histórico — sempre preservado
-  quem_user_id?: Types.ObjectId // preenchido via claim do membro
+  quem_nome?: string | null // valor histórico — sempre preservado
+  quem_user_id?: Types.ObjectId | null // preenchido via claim do membro
   porque: string
   added_by: Types.ObjectId
   updated_at: Date
@@ -46,7 +46,8 @@ const BookSchema = new Schema<IBook>(
     categoria: { type: Schema.Types.ObjectId, ref: 'Categoria', required: true },
     midia: { type: Schema.Types.ObjectId, ref: 'Midia', required: true },
     subgeneros: [{ type: Schema.Types.ObjectId, ref: 'Subgenero' }],
-    quem_nome: { type: String, required: true },
+    // A placeholder from the first load; a book added since is credited to an account (quem_user_id) instead.
+    quem_nome: { type: String, default: undefined },
     quem_user_id: { type: Schema.Types.ObjectId, ref: 'User' },
     porque: { type: String, default: '' },
     added_by: { type: Schema.Types.ObjectId, ref: 'User', required: true },
@@ -76,5 +77,10 @@ BookSchema.index({ midia: 1 })
 BookSchema.index({ subgeneros: 1 })
 BookSchema.index({ google_books_id: 1 }, { sparse: true })
 BookSchema.index({ isbn: 1 }, { sparse: true })
+
+// Every book is mentioned by someone: a placeholder from the first load or an account (fatia 8c).
+BookSchema.pre('validate', function () {
+  if (!this.quem_nome && !this.quem_user_id) this.invalidate('quem_nome', 'Escolha quem mencionou o livro.')
+})
 
 export const Book = model<IBook>('Book', BookSchema)

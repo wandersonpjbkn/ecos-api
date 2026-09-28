@@ -3,6 +3,8 @@ import type { Response } from 'express'
 import { MongoServerError } from 'mongodb'
 import { Error as MongooseError } from 'mongoose'
 
+import { PersonError } from '@/utils/bookPerson.js'
+
 const getDuplicatedField = (err: MongoServerError): string =>
   Object.keys(err.keyPattern ?? {})[0] ??
   Object.keys((err as { keyValue?: Record<string, unknown> }).keyValue ?? {})[0] ??
@@ -15,6 +17,11 @@ const routeOf = (res: Response): string => {
 }
 
 export const handleDataError = (res: Response, err: unknown, fallback: string): void => {
+  if (err instanceof PersonError) {
+    res.status(err.status).json({ error: err.message })
+    return
+  }
+
   if (err instanceof MongoServerError && err.code === 11000) {
     const duplicatedField = getDuplicatedField(err)
     res.status(409).json({

@@ -10,6 +10,8 @@ export type Resource =
   | 'categorias'
   | 'subgeneros'
   | 'permissions'
+  | 'claim'
+  | 'enrichment'
 export type Action = 'create' | 'read' | 'update' | 'delete'
 
 export interface SupabaseJwtPayload {
