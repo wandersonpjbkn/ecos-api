@@ -3,6 +3,8 @@ import type { HydratedDocument, Types } from 'mongoose'
 import type { IBook } from '@/models/Book.js'
 import { changesCover, differs, hasEnrichmentEdit } from '@/utils/enrichment.js'
 
+type Tracked = (typeof PANEL_TRACKED)[number] | (typeof OWNER_TRACKED)[number]
+
 export const PANEL_TRACKED = [
   'titulo',
   'autor',
@@ -35,8 +37,6 @@ export const OWNER_TRACKED = [
   'page_count',
   'published_year',
 ] as const
-
-type Tracked = (typeof PANEL_TRACKED)[number] | (typeof OWNER_TRACKED)[number]
 
 /** Logs each changed field; call it before the new values land, and pass the result to `markBookEdit` after. */
 export const recordBookEdit = (

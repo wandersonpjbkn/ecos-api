@@ -1,9 +1,9 @@
-const SUPABASE_HEALTH_TIMEOUT_MS = 5_000
-
 interface SupabaseTokenResponse {
   access_token: string
   refresh_token: string
 }
+
+const SUPABASE_HEALTH_TIMEOUT_MS = 5_000
 
 /**
  * Simulates a real user session against Supabase Auth using a dedicated

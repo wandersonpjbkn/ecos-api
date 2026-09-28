@@ -1,6 +1,11 @@
 import { fetchGoogleBooks } from '@/utils/googleBooks.js'
 import { fetchOpenLibrary } from '@/utils/openLibrary.js'
 
+export interface EnrichmentPayload {
+  data: Awaited<ReturnType<typeof fetchGoogleBooks>> | Awaited<ReturnType<typeof fetchOpenLibrary>>
+  source: EnrichmentSource
+}
+
 export type EnrichmentSource = 'google_books' | 'open_library'
 
 // A person changed one of these by hand: the automatic search then leaves the book alone (manually_edited_at).
@@ -27,11 +32,6 @@ export const hasEnrichmentEdit = (payload: Record<string, unknown>, current: obj
 export const changesCover = (payload: Record<string, unknown>, current: object): boolean =>
   payload.cover_url !== undefined &&
   differs(payload.cover_url, (current as Record<string, unknown>).cover_url)
-
-export interface EnrichmentPayload {
-  data: Awaited<ReturnType<typeof fetchGoogleBooks>> | Awaited<ReturnType<typeof fetchOpenLibrary>>
-  source: EnrichmentSource
-}
 
 export const getCoverSourceFromEnrichment = (source: EnrichmentSource): 'google' | 'openlibrary' =>
   source === 'google_books' ? 'google' : 'openlibrary'

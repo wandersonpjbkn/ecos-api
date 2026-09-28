@@ -1,6 +1,5 @@
 import { Schema, model, type Types } from 'mongoose'
 
-export const READING_STATUSES = ['quero_ler', 'lido'] as const
 export type ReadingStatusValue = (typeof READING_STATUSES)[number]
 
 export interface IReadingStatus {
@@ -9,6 +8,8 @@ export interface IReadingStatus {
   status: ReadingStatusValue
   updated_at: Date
 }
+
+export const READING_STATUSES = ['quero_ler', 'lido'] as const
 
 const ReadingStatusSchema = new Schema<IReadingStatus>(
   {

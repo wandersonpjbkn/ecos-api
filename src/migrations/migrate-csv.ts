@@ -35,6 +35,16 @@ import { User } from '@/models/User.js'
 import { slugify } from '@/utils/global.js'
 import { seedPermissions } from '@/utils/seed.js'
 
+interface CsvRow {
+  titulo: string
+  autor: string
+  midia: string
+  categoria: string
+  subgeneros: string[]
+  quem_nome: string
+  porque: string
+}
+
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 const CSV_PATH = resolve(__dirname, '../../data/csv-data.csv')
@@ -62,16 +72,6 @@ const upsertNamed = async (
     { upsert: true, new: true },
   )
   return doc!._id
-}
-
-interface CsvRow {
-  titulo: string
-  autor: string
-  midia: string
-  categoria: string
-  subgeneros: string[]
-  quem_nome: string
-  porque: string
 }
 
 const parseCSV = (filePath: string): Promise<CsvRow[]> =>

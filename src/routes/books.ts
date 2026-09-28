@@ -22,8 +22,6 @@ import {
 } from '@/utils/enrichment.js'
 import { handleDataError } from '@/utils/httpErrors.js'
 
-const router = Router()
-
 const normalizeBookInput = (body: Record<string, unknown>): Record<string, unknown> => {
   const normalized = { ...body }
 
@@ -51,6 +49,7 @@ const normalizeBookInput = (body: Record<string, unknown>): Record<string, unkno
   return normalized
 }
 
+const router = Router()
 
 // ── GET /books — público ──────────────────────────────────────────
 router.get('/', async (_req, res: Response) => {
@@ -160,7 +159,6 @@ router.put(
         return
       }
 
-
       const payload = normalizeBookInput(req.body)
       const user = req.user!
       await applyBookPerson(payload, user, book)
@@ -192,7 +190,6 @@ router.patch(
         res.status(404).json({ error: 'Não achamos esse livro. Ele pode ter saído do catálogo.' })
         return
       }
-
 
       const user = req.user!
       const payload = normalizeBookInput(req.body)
@@ -230,7 +227,6 @@ router.post(
         res.status(404).json({ error: 'Não achamos esse livro. Ele pode ter saído do catálogo.' })
         return
       }
-
 
       const authorName =
         typeof book.autor === 'object' && book.autor && 'nome' in book.autor
@@ -306,7 +302,6 @@ router.post(
         res.status(404).json({ error: 'Não achamos esse livro. Ele pode ter saído do catálogo.' })
         return
       }
-
 
       if (book.manually_edited_at) {
         res.status(409).json({

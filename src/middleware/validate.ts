@@ -8,6 +8,8 @@ const isOptionalString = (v: unknown): boolean =>
 
 // ── Books ─────────────────────────────────────────────────────────
 
+type BookField = keyof typeof FIELD
+
 // How a field is named on screen: the API answers in the words the reader sees, never the raw field name.
 const FIELD = {
   titulo: 'o título',
@@ -27,7 +29,6 @@ const FIELD = {
   page_count: 'o número de páginas',
   published_year: 'o ano',
 } as const
-type BookField = keyof typeof FIELD
 
 // Older clients send these names; normalizeBookInput maps them before saving.
 const ALIAS: Record<string, BookField> = {
@@ -49,6 +50,12 @@ const OPTIONAL_TEXT: BookField[] = [
   'publisher',
 ]
 const POSITIVE_INT: BookField[] = ['page_count', 'published_year']
+
+const ADMIN_FIELDS = [...Object.keys(FIELD), ...Object.keys(ALIAS)]
+// The owner edits every field of the book except who mentioned it and where the cover came from.
+const MEMBER_FIELDS = Object.keys(FIELD).filter(
+  (field) => !['quem_nome', 'quem_user_id', 'cover_source', 'publisher'].includes(field),
+)
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
 
@@ -108,12 +115,6 @@ const bookFieldsError = (
   }
   return null
 }
-
-const ADMIN_FIELDS = [...Object.keys(FIELD), ...Object.keys(ALIAS)]
-// The owner edits every field of the book except who mentioned it and where the cover came from.
-const MEMBER_FIELDS = Object.keys(FIELD).filter(
-  (field) => !['quem_nome', 'quem_user_id', 'cover_source', 'publisher'].includes(field),
-)
 
 const bookValidator =
   (allowed: readonly string[], required: readonly BookField[]) =>

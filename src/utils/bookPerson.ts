@@ -5,6 +5,11 @@ import { Permission } from '@/models/Permission.js'
 import { User } from '@/models/User.js'
 import { slugify } from '@/utils/global.js'
 
+interface Actor {
+  _id: Types.ObjectId
+  role: string
+}
+
 // Lowercase inside a name, never at its start: "Maria de Souza".
 const PARTICLES = new Set(['de', 'da', 'do', 'das', 'dos', 'e'])
 
@@ -60,11 +65,6 @@ export const claimMatch = async (user: { _id: Types.ObjectId; name: string; role
   if (await Book.exists({ quem_user_id: user._id, quem_nome: { $type: 'string', $ne: '' } })) return null
   const free = (await placeholders()).filter((m) => !m.userId)
   return free.find((m) => sameName(m.name, user.name))?.name ?? null
-}
-
-interface Actor {
-  _id: Types.ObjectId
-  role: string
 }
 
 /** Who mentioned the book (account or placeholder); a new book defaults to its adder, a new name needs claim: create. */

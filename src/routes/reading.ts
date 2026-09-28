@@ -8,11 +8,11 @@ import { READING_STATUSES, ReadingStatus, type ReadingStatusValue } from '@/mode
 import type { AuthRequest } from '@/types/index.ts'
 import { handleDataError } from '@/utils/httpErrors.js'
 
-// Mounted under /users/me/reading, after the users router authenticates.
-const router = Router()
-
 const isReadingStatus = (value: unknown): value is ReadingStatusValue =>
   typeof value === 'string' && (READING_STATUSES as readonly string[]).includes(value)
+
+// Mounted under /users/me/reading, after the users router authenticates.
+const router = Router()
 
 // ── GET /users/me/reading ────────────────────────────────────────
 router.get('/', async (req: AuthRequest, res: Response) => {
