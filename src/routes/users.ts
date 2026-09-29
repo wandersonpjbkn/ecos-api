@@ -18,7 +18,7 @@ import { User } from '@/models/User.js'
 import readingRoutes from '@/routes/reading.js'
 import type { AuthRequest } from '@/types/index.ts'
 import { markBookEdit, OWNER_TRACKED, recordBookEdit } from '@/utils/bookEdit.js'
-import { claimMatch } from '@/utils/bookPerson.js'
+import { claimMatch, freePlaceholderNames } from '@/utils/bookPerson.js'
 import { handleDataError } from '@/utils/httpErrors.js'
 import {
   deleteSupabaseAccount,
@@ -78,7 +78,12 @@ router.get('/me/claim', async (req: AuthRequest, res: Response) => {
     const currentClaims = await getCurrentClaims(req.user!._id.toString())
 
     if (currentClaims.length === 0) {
-      res.json({ claim_name: null, claimed_books: 0, has_claim: false })
+      res.json({
+        claim_name: null,
+        claimed_books: 0,
+        has_claim: false,
+        available_names: await freePlaceholderNames(),
+      })
       return
     }
 

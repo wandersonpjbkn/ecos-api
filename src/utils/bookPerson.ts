@@ -49,6 +49,13 @@ const placeholders = async (): Promise<{ name: string; userId: Types.ObjectId | 
   return rows.map((row) => ({ name: row._id, userId: row.userId ?? null }))
 }
 
+/** The placeholders nobody has claimed: the names a person can still link to. */
+export const freePlaceholderNames = async (): Promise<string[]> =>
+  (await placeholders())
+    .filter((m) => !m.userId)
+    .map((m) => m.name)
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+
 /** Who a book can be credited to: every account, plus the placeholders nobody has claimed. */
 export const creditablePeople = async (): Promise<{ user_id: string | null; name: string }[]> => {
   const [users, marks] = await Promise.all([User.find().select('name').lean(), placeholders()])

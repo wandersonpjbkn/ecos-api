@@ -4,6 +4,7 @@ import type { Response } from 'express'
 import { authenticate } from '@/middleware/authenticate.js'
 import { authorize } from '@/middleware/authorize.js'
 import { validateCreateSubgenero, validateObjectId } from '@/middleware/validate.js'
+import { Book } from '@/models/Book.js'
 import { Subgenero } from '@/models/Subgenero.js'
 import type { AuthRequest } from '@/types/index.ts'
 import { slugify } from '@/utils/global.js'
@@ -92,6 +93,22 @@ router.patch(
 )
 
 // ── DELETE /subgeneros/:id ────────────────────────────────────────
+// ── GET /subgeneros/:id/usage ─────────────────────────────────────
+router.get(
+  '/:id/usage',
+  validateObjectId('id'),
+  authorize('subgeneros', 'delete'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      // What the removal dialog tells the admin: counted here, not on a copy of the catalog kept in a browser.
+      res.json({ books: await Book.countDocuments({ subgeneros: req.params.id }) })
+    } catch (err) {
+      console.error('[GET /subgeneros/:id/usage]', err)
+      handleDataError(res, err, 'Não foi possível contar os livros. Tente de novo.')
+    }
+  },
+)
+
 router.delete(
   '/:id',
   validateObjectId('id'),
