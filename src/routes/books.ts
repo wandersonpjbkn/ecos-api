@@ -63,6 +63,8 @@ router.get('/', async (_req, res: Response) => {
       .sort({ added_at: -1 })
       .lean()
 
+    // Any copy may be kept, but is checked first: the ETag turns an unchanged catalog into a 304 with no body.
+    res.set('Cache-Control', 'no-cache')
     res.json(books)
   } catch (err) {
     console.error('[GET /books]', err)
