@@ -54,7 +54,11 @@ export const authenticate = async (
 
     payload = jwt.verify(token, publicKey, {
       algorithms: ['ES256'],
+      audience: 'authenticated',
+      issuer: `${process.env.SUPABASE_URL}/auth/v1`,
     }) as SupabaseJwtPayload
+    // Every account here signs in by e-mail: a token without one (anonymous sign-in) is not a member.
+    if (!payload.email) throw new Error('Token sem e-mail')
   } catch (err) {
     console.error('[authenticate] Falha na verificação do token:', err)
     res.status(401).json({ error: 'Sua sessão venceu. Entre de novo.' })
@@ -68,8 +72,8 @@ export const authenticate = async (
       {
         $set: { last_seen_at: new Date() },
         $setOnInsert: {
-          email: payload.email,
-          name: payload.email.split('@')[0],
+          email: payload.email!,
+          name: payload.email!.split('@')[0],
           role: 'viewer',
         },
       },

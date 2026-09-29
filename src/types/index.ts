@@ -16,7 +16,7 @@ export type Action = 'create' | 'read' | 'update' | 'delete'
 
 export interface SupabaseJwtPayload {
   sub: string
-  email: string
+  email?: string
   exp: number
   iat: number
 }
