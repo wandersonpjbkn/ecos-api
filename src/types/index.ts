@@ -2,6 +2,7 @@ import type { Request } from 'express'
 import type { Types } from 'mongoose'
 
 export type Role = 'admin' | 'editor' | 'viewer'
+export type AccountStatus = 'active' | 'suspended'
 export type Resource =
   | 'books'
   | 'users'

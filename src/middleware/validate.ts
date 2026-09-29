@@ -143,6 +143,15 @@ export const validateUpdateRole = (req: AuthRequest, res: Response, next: NextFu
   next()
 }
 
+export const validateUpdateStatus = (req: AuthRequest, res: Response, next: NextFunction): void => {
+  const { status } = req.body
+  if (!['active', 'suspended'].includes(status)) {
+    res.status(400).json({ error: 'Essa opção de acesso não existe.' })
+    return
+  }
+  next()
+}
+
 // ── Entidades de catálogo (Autor, Midia, Categoria, Subgenero) ────
 
 export const validateCreateNamed = (req: AuthRequest, res: Response, next: NextFunction): void => {

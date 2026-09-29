@@ -6,6 +6,7 @@ import { authorize, adminOnly } from '@/middleware/authorize.js'
 import { authRateLimit, writeRateLimit } from '@/middleware/rateLimit.js'
 import {
   validateUpdateRole,
+  validateUpdateStatus,
   validateObjectId,
   validateMemberUpdateBook,
 } from '@/middleware/validate.js'
@@ -19,6 +20,11 @@ import type { AuthRequest } from '@/types/index.ts'
 import { markBookEdit, OWNER_TRACKED, recordBookEdit } from '@/utils/bookEdit.js'
 import { claimMatch } from '@/utils/bookPerson.js'
 import { handleDataError } from '@/utils/httpErrors.js'
+import {
+  deleteSupabaseAccount,
+  SupabaseAdminError,
+  setSupabaseSuspended,
+} from '@/utils/supabaseAdmin.js'
 
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
@@ -40,7 +46,10 @@ router.use('/me/reading', readingRoutes)
 router.get('/', authorize('users', 'read'), async (_req, res: Response) => {
   try {
     // What the members list shows, nothing more: another person's preferences and legacy fields stay out.
-    const users = await User.find().select('name email role created_at last_seen_at').sort({ created_at: -1 }).lean()
+    const users = await User.find()
+      .select('name email role status created_at last_seen_at')
+      .sort({ created_at: -1 })
+      .lean()
     res.json(users)
   } catch (err) {
     console.error('[GET /users]', err)
@@ -313,6 +322,107 @@ router.patch(
     } catch (err) {
       console.error('[PATCH /users/:id/role]', err)
       handleDataError(res, err, 'Não foi possível mudar o nível. Tente de novo.')
+    }
+  },
+)
+
+// What the members list shows about a person (GET /users), also sent back after a change.
+const memberView = (user: InstanceType<typeof User>) => ({
+  _id: user._id,
+  name: user.name,
+  email: user.email,
+  role: user.role,
+  status: user.status,
+  created_at: user.created_at,
+  last_seen_at: user.last_seen_at,
+})
+
+// Only an Administrador with access reaches these, never on their own account: one always keeps access.
+const isOwnAccount = (req: AuthRequest) => req.params.id === req.user!._id.toString()
+
+// ── PATCH /users/:id/status ───────────────────────────────────────
+router.patch(
+  '/:id/status',
+  authRateLimit,
+  writeRateLimit,
+  validateObjectId('id'),
+  adminOnly,
+  validateUpdateStatus,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      if (isOwnAccount(req)) {
+        res.status(400).json({ error: 'Você não pode suspender nem reativar a sua própria conta.' })
+        return
+      }
+
+      const user = await User.findById(req.params.id)
+      if (!user) {
+        res.status(404).json({ error: 'Não achamos essa pessoa.' })
+        return
+      }
+
+      // Supabase first: if it fails, nothing changed here, and sending it again is safe.
+      await setSupabaseSuspended(user.supabase_uid, req.body.status === 'suspended')
+      user.status = req.body.status
+      await user.save()
+
+      console.log(`[PATCH /users/:id/status] ${user.email} → ${user.status} por ${req.user!.email}`)
+      res.json(memberView(user))
+    } catch (err) {
+      console.error('[PATCH /users/:id/status]', err)
+      if (err instanceof SupabaseAdminError) {
+        res.status(502).json({ error: 'Não foi possível mudar o acesso agora. Tente de novo.' })
+        return
+      }
+      handleDataError(res, err, 'Não foi possível mudar o acesso. Tente de novo.')
+    }
+  },
+)
+
+// ── DELETE /users/:id ───────────────────────────────────────
+router.delete(
+  '/:id',
+  authRateLimit,
+  writeRateLimit,
+  validateObjectId('id'),
+  adminOnly,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      if (isOwnAccount(req)) {
+        res.status(400).json({ error: 'Você não pode remover a sua própria conta.' })
+        return
+      }
+
+      const user = await User.findById(req.params.id)
+      if (!user) {
+        res.status(404).json({ error: 'Não achamos essa pessoa.' })
+        return
+      }
+
+      // Supabase first, and every step after it can run again: a failure halfway is fixed by removing again.
+      await deleteSupabaseAccount(user.supabase_uid)
+      // The books stay. Credited straight to the account, they keep its name as a placeholder; a claimed name keeps its own.
+      await Book.updateMany(
+        { quem_user_id: user._id, quem_nome: { $in: [null, ''] } },
+        { $set: { quem_nome: user.name } },
+      )
+      const released = await Book.updateMany(
+        { quem_user_id: user._id },
+        { $unset: { quem_user_id: '' } },
+      )
+      await user.deleteOne()
+
+      console.log(
+        `[DELETE /users/:id] ${user.email} removido por ${req.user!.email}; ${released.modifiedCount} livro(s) com o nome`,
+      )
+      res.json({ removed: user._id, books: released.modifiedCount })
+    } catch (err) {
+      console.error('[DELETE /users/:id]', err)
+      if (err instanceof SupabaseAdminError) {
+        res.status(502).json({ error: 'Não foi possível remover agora. Tente de novo.' })
+        return
+      }
+      handleDataError(res, err, 'Não foi possível remover. Tente de novo.')
     }
   },
 )

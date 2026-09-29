@@ -6,6 +6,7 @@ import jwksClient from 'jwks-rsa'
 import { User } from '@/models/User.js'
 import type { AuthRequest, SupabaseJwtPayload } from '@/types/index.ts'
 import { handleDataError } from '@/utils/httpErrors.js'
+import { supabaseAccountExists } from '@/utils/supabaseAdmin.js'
 
 const client = jwksClient({
   jwksUri: `${process.env.SUPABASE_URL}/auth/v1/.well-known/jwks.json`,
@@ -65,24 +66,47 @@ export const authenticate = async (
     return
   }
 
-  try {
-    // Atomic: a first access sends two verifies together; find-then-create would collide on the unique index.
-    const result = await User.findOneAndUpdate(
-      { supabase_uid: payload.sub },
-      {
-        $set: { last_seen_at: new Date() },
-        $setOnInsert: {
-          email: payload.email!,
-          name: payload.email!.split('@')[0],
-          role: 'viewer',
-        },
-      },
-      { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true, includeResultMetadata: true },
-    )
-    const user = result.value!
+  const email = payload.email!
 
-    if (!result.lastErrorObject?.updatedExisting) {
-      console.log(`[authenticate] Novo usuário criado: ${user.email} (viewer)`)
+  try {
+    let user = await User.findOneAndUpdate(
+      { supabase_uid: payload.sub },
+      { $set: { last_seen_at: new Date() } },
+      { new: true },
+    )
+
+    if (!user) {
+      // A removed account's token stays valid for up to 1 h: it must not bring the account back as a Visitante.
+      if (!(await supabaseAccountExists(payload.sub))) {
+        res.status(401).json({ error: 'Sua sessão venceu. Entre de novo.' })
+        return
+      }
+
+      // Atomic: a first access sends two verifies together; find-then-create would collide on the unique index.
+      const result = await User.findOneAndUpdate(
+        { supabase_uid: payload.sub },
+        {
+          $set: { last_seen_at: new Date() },
+          $setOnInsert: { email, name: email.split('@')[0], role: 'viewer' },
+        },
+        {
+          upsert: true,
+          new: true,
+          runValidators: true,
+          setDefaultsOnInsert: true,
+          includeResultMetadata: true,
+        },
+      )
+      user = result.value!
+
+      if (!result.lastErrorObject?.updatedExisting) {
+        console.log(`[authenticate] Novo usuário criado: ${user.email} (viewer)`)
+      }
+    }
+
+    if (user.status === 'suspended') {
+      res.status(403).json({ error: 'Esta conta está suspensa.', code: 'account_suspended' })
+      return
     }
 
     req.user = {
