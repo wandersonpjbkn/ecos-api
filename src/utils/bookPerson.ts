@@ -56,9 +56,18 @@ export const freePlaceholderNames = async (): Promise<string[]> =>
     .map((m) => m.name)
     .sort((a, b) => a.localeCompare(b, 'pt-BR'))
 
-/** Who a book can be credited to: every account, plus the placeholders nobody has claimed. */
+// An account that has not linked yet is left out: next to its own placeholder it would be the same person twice.
+const linkedAccounts = (marks: { userId: Types.ObjectId | null }[]) => {
+  const ids = [...new Set(marks.filter((m) => m.userId).map((m) => String(m.userId)))]
+  return User.find({ _id: { $in: ids } })
+    .select('name')
+    .lean()
+}
+
+/** Who a book can be credited to: accounts that linked a name, plus the placeholders nobody has linked yet. */
 export const creditablePeople = async (): Promise<{ user_id: string | null; name: string }[]> => {
-  const [users, marks] = await Promise.all([User.find().select('name').lean(), placeholders()])
+  const marks = await placeholders()
+  const users = await linkedAccounts(marks)
   const people = [
     ...users.map((u) => ({ user_id: String(u._id), name: u.name })),
     ...marks.filter((m) => !m.userId).map((m) => ({ user_id: null, name: m.name })),
@@ -117,8 +126,8 @@ export const applyBookPerson = async (
   if (!(await may(actor.role, 'claim', 'create'))) {
     throw new PersonError(403, 'Incluir um nome novo não está liberado para a sua conta. Escolha alguém da lista.')
   }
-  const users = await User.find().select('name').lean()
-  const taken = users.find((u) => sameName(u.name, typed))
+  // Only accounts in the list block the name; one that has not linked yet gets it as a placeholder to link later.
+  const taken = (await linkedAccounts(marks)).find((u) => sameName(u.name, typed))
   if (taken) {
     throw new PersonError(409, `Já existe "${taken.name}". Escolha na lista ou diferencie com um sobrenome ou inicial.`)
   }
