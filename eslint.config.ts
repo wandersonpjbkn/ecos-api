@@ -6,7 +6,7 @@ import importPlugin from 'eslint-plugin-import'
 
 export default defineConfig([
   {
-    files: ['src/**/*.ts'],
+    files: ['src/**/*.ts', 'tests/**/*.ts'],
 
     languageOptions: {
       ecmaVersion: 2022,
