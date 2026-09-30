@@ -98,6 +98,7 @@ router.post(
         try {
           // Guarda de tipo: autor pode não ter sido populado em documentos com migração incompleta
           const autorPopulated =
+            // eslint-disable-next-line sonarjs/different-types-comparison -- populate yields null for a deleted author
             book.autor !== null &&
             typeof book.autor === 'object' &&
             'nome' in (book.autor as object)

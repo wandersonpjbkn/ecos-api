@@ -63,15 +63,17 @@ const toSynopsis = (firstSentence?: OpenLibraryDoc['first_sentence']): string | 
   return first?.value
 }
 
+const coverUrlOf = (isbn: string | undefined, coverId: number | undefined): string | undefined => {
+  if (isbn) return `${COVER_BASE}/isbn/${isbn}-L.jpg`
+  if (coverId) return `${COVER_BASE}/id/${coverId}-L.jpg`
+  return undefined
+}
+
 const extractResult = (doc: OpenLibraryDoc, strategy: OpenLibraryStrategy): OpenLibraryResult => {
   const isbn = doc.isbn?.[0]
   const openLibraryId = doc.edition_key?.[0] ?? doc.key ?? 'openlibrary:unknown'
 
-  const cover_url = isbn
-    ? `${COVER_BASE}/isbn/${isbn}-L.jpg`
-    : doc.cover_i
-      ? `${COVER_BASE}/id/${doc.cover_i}-L.jpg`
-      : undefined
+  const cover_url = coverUrlOf(isbn, doc.cover_i)
 
   return {
     google_books_id: `openlibrary:${openLibraryId}`,

@@ -3,6 +3,7 @@ import globals from 'globals'
 import { defineConfig, globalIgnores } from 'eslint/config'
 import tseslint from 'typescript-eslint'
 import importPlugin from 'eslint-plugin-import'
+import sonarjs from 'eslint-plugin-sonarjs'
 
 export default defineConfig([
   {
@@ -22,7 +23,7 @@ export default defineConfig([
       import: importPlugin,
     },
 
-    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    extends: [js.configs.recommended, ...tseslint.configs.recommended, sonarjs.configs.recommended],
 
     settings: {
       'import/resolver': {
@@ -44,6 +45,19 @@ export default defineConfig([
           alphabetize: { order: 'asc' },
         },
       ],
+    },
+  },
+
+  // Complexity debt that predates sonarjs: warn here, error everywhere else.
+  {
+    files: [
+      'src/middleware/validate.ts',
+      'src/migrations/migrate-csv.ts',
+      'src/routes/admin.ts',
+      'src/utils/bookPerson.ts',
+    ],
+    rules: {
+      'sonarjs/cognitive-complexity': 'warn',
     },
   },
 
