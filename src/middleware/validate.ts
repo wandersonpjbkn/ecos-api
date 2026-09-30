@@ -54,7 +54,7 @@ const POSITIVE_INT: BookField[] = ['page_count', 'published_year']
 const ADMIN_FIELDS = [...Object.keys(FIELD), ...Object.keys(ALIAS)]
 // The owner edits every field of the book except who mentioned it and where the cover came from.
 const MEMBER_FIELDS = Object.keys(FIELD).filter(
-  (field) => !['quem_nome', 'quem_user_id', 'cover_source', 'publisher'].includes(field),
+  (field) => !['quem_nome', 'quem_user_id', 'cover_source'].includes(field),
 )
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)

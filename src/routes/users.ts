@@ -17,7 +17,7 @@ import { Permission } from '@/models/Permission.js'
 import { User } from '@/models/User.js'
 import readingRoutes from '@/routes/reading.js'
 import type { AuthRequest } from '@/types/index.ts'
-import { markBookEdit, OWNER_TRACKED, recordBookEdit } from '@/utils/bookEdit.js'
+import { applyOwnerFields, markBookEdit, OWNER_TRACKED, recordBookEdit } from '@/utils/bookEdit.js'
 import { claimMatch, freePlaceholderNames } from '@/utils/bookPerson.js'
 import { handleDataError } from '@/utils/httpErrors.js'
 import {
@@ -270,19 +270,7 @@ router.patch(
       const user = req.user!
       const marks = recordBookEdit(book, req.body, user._id, OWNER_TRACKED)
 
-      if (req.body.titulo !== undefined) book.titulo = req.body.titulo
-      if (req.body.autor !== undefined) book.autor = req.body.autor
-      if (req.body.categoria !== undefined) book.categoria = req.body.categoria
-      if (req.body.midia !== undefined) book.midia = req.body.midia
-      if (req.body.subgeneros !== undefined) book.subgeneros = req.body.subgeneros
-      if (req.body.porque !== undefined) book.porque = req.body.porque
-      if (req.body.synopsis !== undefined) book.synopsis = req.body.synopsis
-      if (req.body.isbn !== undefined) book.isbn = req.body.isbn
-      if (req.body.cover_url !== undefined) book.cover_url = req.body.cover_url
-      if (req.body.google_books_id !== undefined) book.google_books_id = req.body.google_books_id
-      if (req.body.page_count !== undefined) book.page_count = req.body.page_count ?? undefined
-      if (req.body.published_year !== undefined)
-        book.published_year = req.body.published_year ?? undefined
+      applyOwnerFields(book, req.body)
       markBookEdit(book, req.body, marks)
 
       await book.save()

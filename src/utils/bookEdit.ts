@@ -34,6 +34,7 @@ export const OWNER_TRACKED = [
   'isbn',
   'cover_url',
   'google_books_id',
+  'publisher',
   'page_count',
   'published_year',
 ] as const
@@ -63,4 +64,15 @@ export const markBookEdit = (
 ) => {
   if (enrichmentEdited) book.manually_edited_at = now
   if (coverChanged) book.cover_source = payload.cover_url ? 'manual' : undefined
+}
+
+const EMPTY_WHEN_NULL: readonly string[] = ['page_count', 'published_year']
+
+/** The owner's edit lands field by field: only what came in the body changes, and a cleared number is unset. */
+export const applyOwnerFields = (book: HydratedDocument<IBook>, body: Record<string, unknown>) => {
+  for (const field of OWNER_TRACKED) {
+    const value = body[field]
+    if (value === undefined) continue
+    book.set(field, EMPTY_WHEN_NULL.includes(field) ? (value ?? undefined) : value)
+  }
 }
