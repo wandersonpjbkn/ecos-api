@@ -35,6 +35,16 @@ const app = express()
 // Render puts one proxy in front: req.ip is then the client it saw, not a header the caller wrote.
 app.set('trust proxy', 1)
 
+// TEMP: confirms the proxy count on Render; remove once the log shows the client address.
+let ipChecks = 0
+app.use((req, _res, next) => {
+  if (ipChecks < 20) {
+    ipChecks += 1
+    console.log(`[ip-check] ip=${req.ip} forwarded=${req.headers['x-forwarded-for'] ?? '-'}`)
+  }
+  next()
+})
+
 app.use(helmet())
 app.use(cors({ origin: allowedOrigins, credentials: true }))
 app.use(express.json())
