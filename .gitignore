@@ -35,3 +35,6 @@ data/*.csv
 
 # Graphify (local study only)
 graphify-out/
+
+# CodeQL local run
+.codeql/
