@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [develop]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: yarn
+
+      - run: yarn install --frozen-lockfile
+      - run: yarn ts
+      - run: yarn eslint src tests
+      - run: yarn test
+      # Fails only on high and critical: yarn 1 exits non-zero for any severity.
+      - run: yarn audit:check
