@@ -78,9 +78,7 @@ const run = async () => {
       )
 
       // Atualiza o livro com o ObjectId
-      await db
-        .collection('books')
-        .updateOne({ _id: book._id }, { $set: { categoria: doc!._id } })
+      await db.collection('books').updateOne({ _id: book._id }, { $set: { categoria: doc!._id } })
 
       converted++
       console.log(`✅ "${book.titulo}" → categoria "${name}" (${doc!._id})`)

@@ -76,9 +76,14 @@ export const creditablePeople = async (): Promise<{ user_id: string | null; name
 }
 
 /** An unclaimed placeholder with this account's name: the add form asks "is this you?" before going on. */
-export const claimMatch = async (user: { _id: Types.ObjectId; name: string; role: string }): Promise<string | null> => {
+export const claimMatch = async (user: {
+  _id: Types.ObjectId
+  name: string
+  role: string
+}): Promise<string | null> => {
   if (!(await may(user.role, 'claim', 'update'))) return null
-  if (await Book.exists({ quem_user_id: user._id, quem_nome: { $type: 'string', $ne: '' } })) return null
+  if (await Book.exists({ quem_user_id: user._id, quem_nome: { $type: 'string', $ne: '' } }))
+    return null
   const free = (await placeholders()).filter((m) => !m.userId)
   return free.find((m) => sameName(m.name, user.name))?.name ?? null
 }
@@ -89,7 +94,8 @@ export const applyBookPerson = async (
   actor: Actor,
   current?: { quem_nome?: string | null; quem_user_id?: Types.ObjectId | null },
 ): Promise<void> => {
-  const userId = typeof payload.quem_user_id === 'string' && payload.quem_user_id ? payload.quem_user_id : null
+  const userId =
+    typeof payload.quem_user_id === 'string' && payload.quem_user_id ? payload.quem_user_id : null
   const typed = typeof payload.quem_nome === 'string' ? payload.quem_nome.trim() : ''
   delete payload.quem_user_id
   delete payload.quem_nome
@@ -116,7 +122,10 @@ export const applyBookPerson = async (
   const existing = marks.find((m) => sameName(m.name, typed))
   if (existing) {
     if (existing.name !== formatName(typed) && existing.name !== typed) {
-      throw new PersonError(409, `Já existe "${existing.name}". Escolha na lista ou diferencie com um sobrenome ou inicial.`)
+      throw new PersonError(
+        409,
+        `Já existe "${existing.name}". Escolha na lista ou diferencie com um sobrenome ou inicial.`,
+      )
     }
     payload.quem_nome = existing.name
     payload.quem_user_id = existing.userId
@@ -124,12 +133,18 @@ export const applyBookPerson = async (
   }
 
   if (!(await may(actor.role, 'claim', 'create'))) {
-    throw new PersonError(403, 'Incluir um nome novo não está liberado para a sua conta. Escolha alguém da lista.')
+    throw new PersonError(
+      403,
+      'Incluir um nome novo não está liberado para a sua conta. Escolha alguém da lista.',
+    )
   }
   // Only accounts in the list block the name; one that has not linked yet gets it as a placeholder to link later.
   const taken = (await linkedAccounts(marks)).find((u) => sameName(u.name, typed))
   if (taken) {
-    throw new PersonError(409, `Já existe "${taken.name}". Escolha na lista ou diferencie com um sobrenome ou inicial.`)
+    throw new PersonError(
+      409,
+      `Já existe "${taken.name}". Escolha na lista ou diferencie com um sobrenome ou inicial.`,
+    )
   }
   payload.quem_nome = formatName(typed)
   payload.quem_user_id = null

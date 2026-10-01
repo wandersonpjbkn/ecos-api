@@ -49,11 +49,20 @@ export const recordBookEdit = (
   const now = new Date()
   for (const field of fields) {
     if (payload[field] !== undefined && differs(payload[field], book[field])) {
-      book.edit_history.push({ field, previous_value: String(book[field] ?? ''), edited_at: now, edited_by: userId })
+      book.edit_history.push({
+        field,
+        previous_value: String(book[field] ?? ''),
+        edited_at: now,
+        edited_by: userId,
+      })
     }
   }
   const stored = book.toObject()
-  return { now, enrichmentEdited: hasEnrichmentEdit(payload, stored), coverChanged: changesCover(payload, stored) }
+  return {
+    now,
+    enrichmentEdited: hasEnrichmentEdit(payload, stored),
+    coverChanged: changesCover(payload, stored),
+  }
 }
 
 /** A hand-made correction is not overwritten by the automatic search; an emptied cover has no source to credit. */

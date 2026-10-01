@@ -4,11 +4,7 @@ type EnrichmentItemStatus = 'applied' | 'skipped' | 'failed'
 type EnrichmentItemSource = 'google_books' | 'open_library'
 type EnrichmentItemReason = 'manual_edit' | 'not_found' | 'missing_author'
 type EnrichmentStrategy =
-  | 'isbn'
-  | 'title_author_pt'
-  | 'title_author'
-  | 'openlibrary_isbn'
-  | 'openlibrary_title_author'
+  'isbn' | 'title_author_pt' | 'title_author' | 'openlibrary_isbn' | 'openlibrary_title_author'
 
 interface EnrichmentRunItem {
   book_id: Types.ObjectId
@@ -44,7 +40,13 @@ const EnrichmentRunItemSchema = new Schema<EnrichmentRunItem>(
     reason: { type: String, enum: ['manual_edit', 'not_found', 'missing_author'] },
     strategy: {
       type: String,
-      enum: ['isbn', 'title_author_pt', 'title_author', 'openlibrary_isbn', 'openlibrary_title_author'],
+      enum: [
+        'isbn',
+        'title_author_pt',
+        'title_author',
+        'openlibrary_isbn',
+        'openlibrary_title_author',
+      ],
     },
     cover_url: { type: String },
     error: { type: String },

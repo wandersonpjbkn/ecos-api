@@ -68,7 +68,11 @@ router.patch(
         return
       }
 
-      const author = await Autor.findByIdAndUpdate(req.params.id, { nome: name, slug }, { new: true })
+      const author = await Autor.findByIdAndUpdate(
+        req.params.id,
+        { nome: name, slug },
+        { new: true },
+      )
       if (!author) {
         res.status(404).json({ error: 'Não achamos esse autor.' })
         return

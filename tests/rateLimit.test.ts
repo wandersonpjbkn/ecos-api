@@ -16,7 +16,10 @@ const buildApp = () => {
   return app
 }
 
-const statusesFor = async (app: express.Express, requests: { path: string; forwardedFor: string }[]) => {
+const statusesFor = async (
+  app: express.Express,
+  requests: { path: string; forwardedFor: string }[],
+) => {
   const statuses: number[] = []
   for (const { path, forwardedFor } of requests) {
     const res = await request(app).get(path).set('X-Forwarded-For', forwardedFor)
@@ -50,7 +53,10 @@ describe('writeRateLimit', () => {
 
   it('keeps each client on its own count', async () => {
     const app = buildApp()
-    const exhausted = Array.from({ length: WRITE_LIMIT + 1 }, () => ({ path: '/books/a', forwardedFor: '203.0.113.3' }))
+    const exhausted = Array.from({ length: WRITE_LIMIT + 1 }, () => ({
+      path: '/books/a',
+      forwardedFor: '203.0.113.3',
+    }))
     await statusesFor(app, exhausted)
 
     const [other] = await statusesFor(app, [{ path: '/books/a', forwardedFor: '203.0.113.4' }])

@@ -21,7 +21,8 @@ const ENRICHMENT_FIELDS = new Set([
 ])
 
 // null, undefined and '' are the same empty value: comparing them raw writes history for edits nobody made.
-export const differs = (next: unknown, current: unknown) => String(next ?? '') !== String(current ?? '')
+export const differs = (next: unknown, current: unknown) =>
+  String(next ?? '') !== String(current ?? '')
 
 // Compared with the stored book, not just present: an edit form sends back every field it loaded.
 export const hasEnrichmentEdit = (payload: Record<string, unknown>, current: object): boolean =>

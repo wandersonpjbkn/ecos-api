@@ -68,7 +68,11 @@ router.patch(
         return
       }
 
-      const format = await Midia.findByIdAndUpdate(req.params.id, { nome: name, slug }, { new: true })
+      const format = await Midia.findByIdAndUpdate(
+        req.params.id,
+        { nome: name, slug },
+        { new: true },
+      )
       if (!format) {
         res.status(404).json({ error: 'Não achamos esse formato.' })
         return

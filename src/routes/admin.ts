@@ -210,86 +210,101 @@ router.post(
 )
 
 // ── GET /admin/books/enrich/status ────────────────────────────────
-router.get('/books/enrich/status', authRateLimit, authorize('enrichment', 'update'), async (_req: AuthRequest, res: Response) => {
-  try {
-    const [total, withCover, lastEnriched] = await Promise.all([
-      Book.countDocuments(),
-      Book.countDocuments({ cover_url: { $exists: true, $ne: '' } }),
-      Book.findOne({ enriched_at: { $exists: true } })
-        .sort({ enriched_at: -1 })
-        .select('enriched_at')
-        .lean(),
-    ])
+router.get(
+  '/books/enrich/status',
+  authRateLimit,
+  authorize('enrichment', 'update'),
+  async (_req: AuthRequest, res: Response) => {
+    try {
+      const [total, withCover, lastEnriched] = await Promise.all([
+        Book.countDocuments(),
+        Book.countDocuments({ cover_url: { $exists: true, $ne: '' } }),
+        Book.findOne({ enriched_at: { $exists: true } })
+          .sort({ enriched_at: -1 })
+          .select('enriched_at')
+          .lean(),
+      ])
 
-    res.json({
-      total,
-      with_cover: withCover,
-      without_cover: total - withCover,
-      coverage_pct: total > 0 ? Math.round((withCover / total) * 100) : 0,
-      last_enriched_at: lastEnriched?.enriched_at ?? null,
-    })
-  } catch (err) {
-    console.error('[GET /admin/books/enrich/status]', err)
-    handleDataError(res, err, 'Não foi possível carregar o que já foi feito. Tente de novo.')
-  }
-})
+      res.json({
+        total,
+        with_cover: withCover,
+        without_cover: total - withCover,
+        coverage_pct: total > 0 ? Math.round((withCover / total) * 100) : 0,
+        last_enriched_at: lastEnriched?.enriched_at ?? null,
+      })
+    } catch (err) {
+      console.error('[GET /admin/books/enrich/status]', err)
+      handleDataError(res, err, 'Não foi possível carregar o que já foi feito. Tente de novo.')
+    }
+  },
+)
 
 // ── GET /admin/books/enrich/history ───────────────────────────────
-router.get('/books/enrich/history', authRateLimit, authorize('enrichment', 'update'), async (req: AuthRequest, res: Response) => {
-  try {
-    const parsedLimit = Number(req.query.limit ?? 10)
-    const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 50) : 10
+router.get(
+  '/books/enrich/history',
+  authRateLimit,
+  authorize('enrichment', 'update'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const parsedLimit = Number(req.query.limit ?? 10)
+      const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 50) : 10
 
-    const history = await EnrichmentRun.find()
-      .sort({ finished_at: -1 })
-      .limit(limit)
-      .select(
-        'started_at finished_at force initiated_by_email total enriched skipped failed coverage_pct_after results',
-      )
-      .lean()
-
-    res.json({ total_runs: history.length, history })
-  } catch (err) {
-    console.error('[GET /admin/books/enrich/history]', err)
-    handleDataError(res, err, 'Não foi possível carregar o histórico. Tente de novo.')
-  }
-})
-
-// ── GET /admin/users/claims/history ──────────────────────────────
-router.get('/users/claims/history', authRateLimit, adminOnly, async (req: AuthRequest, res: Response) => {
-  try {
-    const parsedLimit = Number(req.query.limit ?? 20)
-    const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 500) : 20
-
-    // total is every record, not this page: the panel says when the list it got is only the most recent part.
-    const [history, total] = await Promise.all([
-      ClaimHistory.find()
-        .sort({ performed_at: -1 })
+      const history = await EnrichmentRun.find()
+        .sort({ finished_at: -1 })
         .limit(limit)
         .select(
-          'action user_id user_email claim_name previous_claim_names affected_books performed_at',
+          'started_at finished_at force initiated_by_email total enriched skipped failed coverage_pct_after results',
         )
-        .lean(),
-      ClaimHistory.countDocuments(),
-    ])
+        .lean()
 
-    // The person's current name, as on Membros; the e-mail stays for whoever has since left the club.
-    const ids = [...new Set(history.map((entry) => String(entry.user_id)))]
-    const users = await User.find({ _id: { $in: ids } })
-      .select('name')
-      .lean()
-    const nameOf = new Map(users.map((user) => [String(user._id), user.name]))
-    res.json({
-      total,
-      history: history.map((entry) => ({
-        ...entry,
-        user_name: nameOf.get(String(entry.user_id)) ?? null,
-      })),
-    })
-  } catch (err) {
-    console.error('[GET /admin/users/claims/history]', err)
-    handleDataError(res, err, 'Não foi possível carregar o histórico de vínculos. Tente de novo.')
-  }
-})
+      res.json({ total_runs: history.length, history })
+    } catch (err) {
+      console.error('[GET /admin/books/enrich/history]', err)
+      handleDataError(res, err, 'Não foi possível carregar o histórico. Tente de novo.')
+    }
+  },
+)
+
+// ── GET /admin/users/claims/history ──────────────────────────────
+router.get(
+  '/users/claims/history',
+  authRateLimit,
+  adminOnly,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const parsedLimit = Number(req.query.limit ?? 20)
+      const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 500) : 20
+
+      // total is every record, not this page: the panel says when the list it got is only the most recent part.
+      const [history, total] = await Promise.all([
+        ClaimHistory.find()
+          .sort({ performed_at: -1 })
+          .limit(limit)
+          .select(
+            'action user_id user_email claim_name previous_claim_names affected_books performed_at',
+          )
+          .lean(),
+        ClaimHistory.countDocuments(),
+      ])
+
+      // The person's current name, as on Membros; the e-mail stays for whoever has since left the club.
+      const ids = [...new Set(history.map((entry) => String(entry.user_id)))]
+      const users = await User.find({ _id: { $in: ids } })
+        .select('name')
+        .lean()
+      const nameOf = new Map(users.map((user) => [String(user._id), user.name]))
+      res.json({
+        total,
+        history: history.map((entry) => ({
+          ...entry,
+          user_name: nameOf.get(String(entry.user_id)) ?? null,
+        })),
+      })
+    } catch (err) {
+      console.error('[GET /admin/users/claims/history]', err)
+      handleDataError(res, err, 'Não foi possível carregar o histórico de vínculos. Tente de novo.')
+    }
+  },
+)
 
 export default router

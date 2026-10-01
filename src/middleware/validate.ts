@@ -87,7 +87,8 @@ const bookFieldsError = (
   }
   // Who mentioned: an account id or a placeholder name, both optional (a new book defaults to whoever adds it).
   const userId = body.quem_user_id
-  if (userId !== undefined && userId !== null && userId !== '' && !isObjectId(userId)) return 'Escolha alguém da lista.'
+  if (userId !== undefined && userId !== null && userId !== '' && !isObjectId(userId))
+    return 'Escolha alguém da lista.'
   if (!isOptionalString(body.quem_nome)) return 'Escolha alguém da lista.'
   const subgenres = body.subgeneros
   if (
@@ -127,8 +128,18 @@ const bookValidator =
     next()
   }
 
-export const validateCreateBook = bookValidator(ADMIN_FIELDS, ['titulo', 'autor', 'categoria', 'midia'])
-export const validateReplaceBook = bookValidator(ADMIN_FIELDS, ['titulo', 'autor', 'categoria', 'midia'])
+export const validateCreateBook = bookValidator(ADMIN_FIELDS, [
+  'titulo',
+  'autor',
+  'categoria',
+  'midia',
+])
+export const validateReplaceBook = bookValidator(ADMIN_FIELDS, [
+  'titulo',
+  'autor',
+  'categoria',
+  'midia',
+])
 export const validateUpdateBook = bookValidator(ADMIN_FIELDS, [])
 export const validateMemberUpdateBook = bookValidator(MEMBER_FIELDS, [])
 

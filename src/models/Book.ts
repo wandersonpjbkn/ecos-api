@@ -80,7 +80,8 @@ BookSchema.index({ isbn: 1 }, { sparse: true })
 
 // Every book is mentioned by someone: a placeholder from the first load or an account (fatia 8c).
 BookSchema.pre('validate', function () {
-  if (!this.quem_nome && !this.quem_user_id) this.invalidate('quem_nome', 'Escolha quem mencionou o livro.')
+  if (!this.quem_nome && !this.quem_user_id)
+    this.invalidate('quem_nome', 'Escolha quem mencionou o livro.')
 })
 
 export const Book = model<IBook>('Book', BookSchema)

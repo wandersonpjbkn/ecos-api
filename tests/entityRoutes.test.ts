@@ -19,7 +19,13 @@ const userId = new Types.ObjectId()
 
 vi.mock('@/middleware/authenticate.js', () => ({
   authenticate: (req: AuthRequest, _res: Response, next: NextFunction) => {
-    req.user = { _id: userId, supabase_uid: 'uid', email: 'editor@ecos.test', name: 'Editor', role: 'editor' }
+    req.user = {
+      _id: userId,
+      supabase_uid: 'uid',
+      email: 'editor@ecos.test',
+      name: 'Editor',
+      role: 'editor',
+    }
     next()
   },
 }))
@@ -43,7 +49,9 @@ describe.each(ENTITIES)('$path', ({ path, router, Model }) => {
   const model = Model as typeof Autor
 
   beforeEach(() => {
-    vi.spyOn(Permission, 'findOne').mockResolvedValue({ actions: ['read', 'create', 'update', 'delete'] })
+    vi.spyOn(Permission, 'findOne').mockResolvedValue({
+      actions: ['read', 'create', 'update', 'delete'],
+    })
     vi.spyOn(console, 'log').mockImplementation(() => undefined)
   })
   afterEach(() => vi.restoreAllMocks())
@@ -52,11 +60,17 @@ describe.each(ENTITIES)('$path', ({ path, router, Model }) => {
     vi.spyOn(model, 'findOne').mockResolvedValue(null)
     const create = vi.spyOn(model, 'create').mockImplementation(async (doc) => doc as never)
 
-    const res = await request(buildApp(path, router)).post(path).send({ nome: '  Ana Maria Machado ' })
+    const res = await request(buildApp(path, router))
+      .post(path)
+      .send({ nome: '  Ana Maria Machado ' })
 
     expect(res.status).toBe(201)
     expect(create).toHaveBeenCalledWith(
-      expect.objectContaining({ nome: 'Ana Maria Machado', slug: 'ana-maria-machado', created_by: userId }),
+      expect.objectContaining({
+        nome: 'Ana Maria Machado',
+        slug: 'ana-maria-machado',
+        created_by: userId,
+      }),
     )
   })
 
@@ -77,10 +91,16 @@ describe.each(ENTITIES)('$path', ({ path, router, Model }) => {
       .spyOn(model, 'findByIdAndUpdate')
       .mockResolvedValue({ nome: 'Machado de Assis' } as never)
 
-    const res = await request(buildApp(path, router)).patch(`${path}/${id}`).send({ nome: ' Machado de Assis  ' })
+    const res = await request(buildApp(path, router))
+      .patch(`${path}/${id}`)
+      .send({ nome: ' Machado de Assis  ' })
 
     expect(res.status).toBe(200)
-    expect(update).toHaveBeenCalledWith(id, { nome: 'Machado de Assis', slug: 'machado-de-assis' }, { new: true })
+    expect(update).toHaveBeenCalledWith(
+      id,
+      { nome: 'Machado de Assis', slug: 'machado-de-assis' },
+      { new: true },
+    )
   })
 
   it('answers 404 when the item to rename is gone', async () => {

@@ -16,10 +16,7 @@ import { ReadingStatus, type ReadingStatusValue } from '@/models/ReadingStatus.j
 import type { AuthRequest } from '@/types/index.ts'
 import { markBookEdit, PANEL_TRACKED, recordBookEdit } from '@/utils/bookEdit.js'
 import { applyBookPerson, creditablePeople } from '@/utils/bookPerson.js'
-import {
-  fetchEnrichmentPayload,
-  getCoverSourceFromEnrichment,
-} from '@/utils/enrichment.js'
+import { fetchEnrichmentPayload, getCoverSourceFromEnrichment } from '@/utils/enrichment.js'
 import { handleDataError } from '@/utils/httpErrors.js'
 
 const normalizeBookInput = (body: Record<string, unknown>): Record<string, unknown> => {
@@ -73,13 +70,18 @@ router.get('/', async (_req, res: Response) => {
 })
 
 // ── GET /books/people ──
-router.get('/people', authenticate, authorize('books', 'create'), async (_req: AuthRequest, res: Response) => {
-  try {
-    res.json(await creditablePeople())
-  } catch (err) {
-    handleDataError(res, err, 'Não foi possível carregar a lista de pessoas. Tente de novo.')
-  }
-})
+router.get(
+  '/people',
+  authenticate,
+  authorize('books', 'create'),
+  async (_req: AuthRequest, res: Response) => {
+    try {
+      res.json(await creditablePeople())
+    } catch (err) {
+      handleDataError(res, err, 'Não foi possível carregar a lista de pessoas. Tente de novo.')
+    }
+  },
+)
 
 // ── GET /books/:id — público ──────────────────────────────────────
 router.get('/:id', validateObjectId('id'), async (req: AuthRequest, res: Response) => {

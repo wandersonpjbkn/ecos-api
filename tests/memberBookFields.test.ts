@@ -18,7 +18,9 @@ const buildApp = () => {
 
 describe('validateMemberUpdateBook', () => {
   it('lets the owner edit the publisher, like every other field of the book', async () => {
-    const res = await request(buildApp()).patch('/me/books/1').send({ publisher: 'Companhia das Letras' })
+    const res = await request(buildApp())
+      .patch('/me/books/1')
+      .send({ publisher: 'Companhia das Letras' })
 
     expect(res.status).toBe(200)
   })
