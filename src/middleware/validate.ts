@@ -13,7 +13,7 @@ type BookField = keyof typeof FIELD
 // How a field is named on screen: the API answers in the words the reader sees, never the raw field name.
 const FIELD = {
   titulo: 'o título',
-  autor: 'o autor',
+  authors: 'o autor',
   categoria: 'o gênero',
   midia: 'o formato',
   quem_nome: 'quem mencionou',
@@ -40,7 +40,8 @@ const ALIAS: Record<string, BookField> = {
 }
 
 const REQUIRED_TEXT: BookField[] = ['titulo']
-const IDS: BookField[] = ['autor', 'categoria', 'midia']
+const IDS: BookField[] = ['categoria', 'midia']
+const isIdList = (v: unknown): v is unknown[] => Array.isArray(v) && v.every(isObjectId)
 const OPTIONAL_TEXT: BookField[] = [
   'porque',
   'synopsis',
@@ -74,9 +75,13 @@ const bookFieldsError = (
   const value = (field: BookField) =>
     body[field] ?? body[Object.keys(ALIAS).find((alias) => ALIAS[alias] === field) ?? '']
 
+  const filled = (field: BookField) => {
+    // An empty or malformed list gets its own sentence below.
+    if (field === 'authors') return value(field) !== undefined
+    return IDS.includes(field) ? isObjectId(value(field)) : isString(value(field))
+  }
   for (const field of required) {
-    if (IDS.includes(field) ? !isObjectId(value(field)) : !isString(value(field)))
-      return `Falta ${FIELD[field]}.`
+    if (!filled(field)) return `Falta ${FIELD[field]}.`
   }
   for (const field of REQUIRED_TEXT) {
     if (value(field) !== undefined && !isString(value(field))) return `Falta ${FIELD[field]}.`
@@ -90,13 +95,13 @@ const bookFieldsError = (
   if (userId !== undefined && userId !== null && userId !== '' && !isObjectId(userId))
     return 'Escolha alguém da lista.'
   if (!isOptionalString(body.quem_nome)) return 'Escolha alguém da lista.'
-  const subgenres = body.subgeneros
-  if (
-    subgenres !== undefined &&
-    (!Array.isArray(subgenres) || subgenres.some((id) => !isObjectId(id)))
-  ) {
-    return 'Algum subgênero não é válido.'
+  const { authors, subgeneros: subgenres } = body
+  if (authors !== undefined) {
+    if (!isIdList(authors)) return 'Algum autor não é válido.'
+    if (authors.length === 0) return 'Falta o autor.'
+    if (new Set(authors).size !== authors.length) return 'O mesmo autor está duas vezes.'
   }
+  if (subgenres !== undefined && !isIdList(subgenres)) return 'Algum subgênero não é válido.'
   for (const field of OPTIONAL_TEXT) {
     if (!isOptionalString(value(field))) return `${capitalize(FIELD[field])} precisa ser um texto.`
   }
@@ -130,13 +135,13 @@ const bookValidator =
 
 export const validateCreateBook = bookValidator(ADMIN_FIELDS, [
   'titulo',
-  'autor',
+  'authors',
   'categoria',
   'midia',
 ])
 export const validateReplaceBook = bookValidator(ADMIN_FIELDS, [
   'titulo',
-  'autor',
+  'authors',
   'categoria',
   'midia',
 ])

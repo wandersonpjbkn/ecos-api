@@ -36,7 +36,7 @@ describe('applyOwnerFields', () => {
   const book = () =>
     new Book({
       titulo: 'Dom Casmurro',
-      autor: new Types.ObjectId(),
+      authors: [new Types.ObjectId()],
       categoria: new Types.ObjectId(),
       midia: new Types.ObjectId(),
       added_by: new Types.ObjectId(),

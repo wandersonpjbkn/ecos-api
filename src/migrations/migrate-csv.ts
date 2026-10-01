@@ -217,11 +217,11 @@ const run = async () => {
         .filter((id): id is mongoose.Types.ObjectId => id !== undefined)
 
       const result = await Book.updateOne(
-        { titulo: row.titulo, autor: authorId },
+        { titulo: row.titulo, authors: authorId },
         {
           $setOnInsert: {
             titulo: row.titulo,
-            autor: authorId,
+            authors: [authorId],
             midia: formatId,
             categoria: genreId,
             subgeneros: subgenreIds,

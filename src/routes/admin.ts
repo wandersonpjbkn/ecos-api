@@ -9,7 +9,11 @@ import { ClaimHistory } from '@/models/ClaimHistory.js'
 import { EnrichmentRun } from '@/models/EnrichmentRun.js'
 import { User } from '@/models/User.js'
 import type { AuthRequest } from '@/types/index.ts'
-import { fetchEnrichmentPayload, getCoverSourceFromEnrichment } from '@/utils/enrichment.js'
+import {
+  fetchEnrichmentPayload,
+  getCoverSourceFromEnrichment,
+  mainAuthorName,
+} from '@/utils/enrichment.js'
 import { handleDataError } from '@/utils/httpErrors.js'
 
 const router = Router()
@@ -38,8 +42,8 @@ router.post(
         : { $or: [{ cover_url: { $exists: false } }, { cover_url: null }, { cover_url: '' }] }
 
       const books = await Book.find(filter)
-        .populate<{ autor: { nome: string } }>('autor', 'nome')
-        .select('titulo autor isbn cover_url enriched_at manually_edited_at')
+        .populate<{ authors: { nome: string }[] }>('authors', 'nome')
+        .select('titulo authors isbn cover_url enriched_at manually_edited_at')
         .lean()
 
       if (!books.length) {
@@ -96,14 +100,8 @@ router.post(
         }
 
         try {
-          // Guarda de tipo: autor pode não ter sido populado em documentos com migração incompleta
-          const authorPopulated =
-            // eslint-disable-next-line sonarjs/different-types-comparison -- populate yields null for a deleted author
-            book.autor !== null &&
-            typeof book.autor === 'object' &&
-            'nome' in (book.autor as object)
-
-          if (!authorPopulated) {
+          const authorName = mainAuthorName(book.authors)
+          if (!authorName) {
             console.warn(`[enrich] ⚠️  "${book.titulo}" sem autor populado — pulando`)
             skipped++
             results.push({
@@ -114,8 +112,6 @@ router.post(
             })
             continue
           }
-
-          const authorName = (book.autor as unknown as { nome: string }).nome
 
           const enrichment = await fetchEnrichmentPayload(book.titulo, authorName, book.isbn)
 

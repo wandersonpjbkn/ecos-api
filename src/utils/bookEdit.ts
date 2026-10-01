@@ -7,7 +7,7 @@ type Tracked = (typeof PANEL_TRACKED)[number] | (typeof OWNER_TRACKED)[number]
 
 export const PANEL_TRACKED = [
   'titulo',
-  'autor',
+  'authors',
   'categoria',
   'midia',
   'subgeneros',
@@ -25,7 +25,7 @@ export const PANEL_TRACKED = [
 
 export const OWNER_TRACKED = [
   'titulo',
-  'autor',
+  'authors',
   'categoria',
   'midia',
   'subgeneros',

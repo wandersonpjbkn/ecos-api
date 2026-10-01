@@ -95,7 +95,7 @@ router.delete(
   async (req: AuthRequest, res: Response) => {
     try {
       const { Book } = await import('@/models/Book.js')
-      const inUse = await Book.exists({ autor: req.params.id })
+      const inUse = await Book.exists({ authors: req.params.id })
       if (inUse) {
         res.status(409).json({
           error: 'Há livros com esse autor. Troque o autor deles antes de remover.',

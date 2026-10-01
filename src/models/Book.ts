@@ -3,7 +3,7 @@ import type { EditHistoryEntry } from '@/types/index.ts'
 
 export interface IBook {
   titulo: string
-  autor: Types.ObjectId // ref → Autor
+  authors: Types.ObjectId[] // refs → Autor; the first is the one a list shows
   categoria: Types.ObjectId // ref → Categoria
   midia: Types.ObjectId // ref → Midia
   subgeneros: Types.ObjectId[] // refs → Subgenero
@@ -42,7 +42,10 @@ const EditHistorySchema = new Schema<EditHistoryEntry>(
 const BookSchema = new Schema<IBook>(
   {
     titulo: { type: String, required: true },
-    autor: { type: Schema.Types.ObjectId, ref: 'Autor', required: true },
+    authors: {
+      type: [{ type: Schema.Types.ObjectId, ref: 'Autor' }],
+      validate: { validator: (ids: Types.ObjectId[]) => ids.length > 0, message: 'Falta o autor.' },
+    },
     categoria: { type: Schema.Types.ObjectId, ref: 'Categoria', required: true },
     midia: { type: Schema.Types.ObjectId, ref: 'Midia', required: true },
     subgeneros: [{ type: Schema.Types.ObjectId, ref: 'Subgenero' }],
@@ -71,7 +74,7 @@ const BookSchema = new Schema<IBook>(
 )
 
 BookSchema.index({ quem_user_id: 1 })
-BookSchema.index({ autor: 1 })
+BookSchema.index({ authors: 1 })
 BookSchema.index({ categoria: 1 })
 BookSchema.index({ midia: 1 })
 BookSchema.index({ subgeneros: 1 })

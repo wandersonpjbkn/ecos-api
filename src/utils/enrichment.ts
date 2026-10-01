@@ -54,3 +54,9 @@ export const fetchEnrichmentPayload = async (
 
   return null
 }
+
+/** The author the search uses: the first one, the one a list shows; null when missing or since removed. */
+export const mainAuthorName = (authors: unknown): string | null => {
+  const first: unknown = Array.isArray(authors) ? authors[0] : null
+  return first && typeof first === 'object' && 'nome' in first ? String(first.nome) : null
+}

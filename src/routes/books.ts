@@ -16,7 +16,11 @@ import { ReadingStatus, type ReadingStatusValue } from '@/models/ReadingStatus.j
 import type { AuthRequest } from '@/types/index.ts'
 import { markBookEdit, PANEL_TRACKED, recordBookEdit } from '@/utils/bookEdit.js'
 import { applyBookPerson, creditablePeople } from '@/utils/bookPerson.js'
-import { fetchEnrichmentPayload, getCoverSourceFromEnrichment } from '@/utils/enrichment.js'
+import {
+  fetchEnrichmentPayload,
+  getCoverSourceFromEnrichment,
+  mainAuthorName,
+} from '@/utils/enrichment.js'
 import { handleDataError } from '@/utils/httpErrors.js'
 
 const normalizeBookInput = (body: Record<string, unknown>): Record<string, unknown> => {
@@ -52,7 +56,7 @@ const router = Router()
 router.get('/', async (_req, res: Response) => {
   try {
     const books = await Book.find()
-      .populate('autor', 'nome slug')
+      .populate('authors', 'nome slug')
       .populate('categoria', 'nome slug')
       .populate('midia', 'nome slug')
       .populate('subgeneros', 'nome slug')
@@ -87,7 +91,7 @@ router.get(
 router.get('/:id', validateObjectId('id'), async (req: AuthRequest, res: Response) => {
   try {
     const book = await Book.findById(req.params.id)
-      .populate('autor', 'nome slug')
+      .populate('authors', 'nome slug')
       .populate('categoria', 'nome slug')
       .populate('midia', 'nome slug')
       .populate('subgeneros', 'nome slug')
@@ -224,7 +228,7 @@ router.post(
   async (req: AuthRequest, res: Response) => {
     try {
       const book = await Book.findById(req.params.id)
-        .populate<{ autor: { nome: string } }>('autor', 'nome')
+        .populate<{ authors: { nome: string }[] }>('authors', 'nome')
         .lean()
 
       if (!book) {
@@ -232,10 +236,7 @@ router.post(
         return
       }
 
-      const authorName =
-        typeof book.autor === 'object' && book.autor && 'nome' in book.autor
-          ? book.autor.nome
-          : null
+      const authorName = mainAuthorName(book.authors)
       if (!authorName) {
         res.status(400).json({ error: 'Falta o autor para procurar.' })
         return
@@ -298,8 +299,8 @@ router.post(
         return
       }
 
-      const book = await Book.findById(req.params.id).populate<{ autor: { nome: string } }>(
-        'autor',
+      const book = await Book.findById(req.params.id).populate<{ authors: { nome: string }[] }>(
+        'authors',
         'nome',
       )
       if (!book) {
@@ -315,10 +316,7 @@ router.post(
         return
       }
 
-      const authorName =
-        typeof book.autor === 'object' && book.autor && 'nome' in book.autor
-          ? book.autor.nome
-          : null
+      const authorName = mainAuthorName(book.authors)
       if (!authorName) {
         res.status(400).json({ error: 'Falta o autor para procurar.' })
         return

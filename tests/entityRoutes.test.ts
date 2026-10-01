@@ -5,6 +5,7 @@ import request from 'supertest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { Autor } from '@/models/Autor.js'
+import { Book } from '@/models/Book.js'
 import { Categoria } from '@/models/Categoria.js'
 import { Midia } from '@/models/Midia.js'
 import { Permission } from '@/models/Permission.js'
@@ -110,5 +111,22 @@ describe.each(ENTITIES)('$path', ({ path, router, Model }) => {
     const res = await request(buildApp(path, router)).patch(`${path}/${id}`).send({ nome: 'Outro' })
 
     expect(res.status).toBe(404)
+  })
+})
+
+describe('/autores removal', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it('keeps an author that is in the author list of some book', async () => {
+    vi.spyOn(Permission, 'findOne').mockResolvedValue({ actions: ['delete'] })
+    const inUse = vi.spyOn(Book, 'exists').mockResolvedValue({ _id: new Types.ObjectId() })
+    const remove = vi.spyOn(Autor, 'findByIdAndDelete')
+    const id = String(new Types.ObjectId())
+
+    const res = await request(buildApp('/autores', authorRoutes)).delete(`/autores/${id}`)
+
+    expect(res.status).toBe(409)
+    expect(inUse).toHaveBeenCalledWith({ authors: id })
+    expect(remove).not.toHaveBeenCalled()
   })
 })
