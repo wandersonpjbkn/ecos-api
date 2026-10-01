@@ -4,6 +4,7 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 import tseslint from 'typescript-eslint'
 import importPlugin from 'eslint-plugin-import'
 import sonarjs from 'eslint-plugin-sonarjs'
+import prettier from 'eslint-config-prettier'
 
 export default defineConfig([
   {
@@ -62,4 +63,6 @@ export default defineConfig([
   },
 
   globalIgnores(['**/dist/**']),
+
+  prettier,
 ])
