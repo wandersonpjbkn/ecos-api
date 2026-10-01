@@ -63,8 +63,8 @@ const fetchVolume = async (url: string): Promise<GoogleBooksVolume | null> => {
  * Retorna null se não encontrar resultado válido.
  */
 export const fetchGoogleBooks = async (
-  titulo: string,
-  autor: string,
+  title: string,
+  author: string,
   isbn?: string,
 ): Promise<GoogleBooksResult | null> => {
   const apiKey = process.env.GOOGLE_BOOKS_API_KEY
@@ -78,7 +78,7 @@ export const fetchGoogleBooks = async (
     try {
       const volume = await fetchVolume(url)
       if (volume) {
-        console.log(`[googleBooks] ✅ ISBN match: "${titulo}"`)
+        console.log(`[googleBooks] ✅ ISBN match: "${title}"`)
         return extractResult(volume, 'isbn')
       }
     } catch (err) {
@@ -87,17 +87,17 @@ export const fetchGoogleBooks = async (
   }
 
   // ── Estratégia 2: título + autor (com restrição de idioma pt) ──
-  const titleAuthorQuery = encodeURIComponent(`intitle:${titulo} inauthor:${autor}`)
+  const titleAuthorQuery = encodeURIComponent(`intitle:${title} inauthor:${author}`)
 
   try {
     const url = buildUrl(`${titleAuthorQuery}&langRestrict=pt`, keyParam)
     const volume = await fetchVolume(url)
     if (volume) {
-      console.log(`[googleBooks] ✅ título+autor (pt) match: "${titulo}"`)
+      console.log(`[googleBooks] ✅ título+autor (pt) match: "${title}"`)
       return extractResult(volume, 'title_author_pt')
     }
   } catch (err) {
-    console.warn(`[googleBooks] Falha na busca por título+autor (pt) "${titulo}":`, err)
+    console.warn(`[googleBooks] Falha na busca por título+autor (pt) "${title}":`, err)
   }
 
   // ── Estratégia 3: título + autor sem restrição de idioma ───────
@@ -105,14 +105,14 @@ export const fetchGoogleBooks = async (
     const url = buildUrl(titleAuthorQuery, keyParam)
     const volume = await fetchVolume(url)
     if (volume) {
-      console.log(`[googleBooks] ✅ título+autor (sem lang) match: "${titulo}"`)
+      console.log(`[googleBooks] ✅ título+autor (sem lang) match: "${title}"`)
       return extractResult(volume, 'title_author')
     }
   } catch (err) {
-    console.warn(`[googleBooks] Falha na busca sem restrição "${titulo}":`, err)
+    console.warn(`[googleBooks] Falha na busca sem restrição "${title}":`, err)
   }
 
-  console.log(`[googleBooks] ⏭️  Sem resultado para "${titulo}" — ${autor}`)
+  console.log(`[googleBooks] ⏭️  Sem resultado para "${title}" — ${author}`)
   return null
 }
 

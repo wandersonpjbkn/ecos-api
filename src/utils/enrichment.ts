@@ -37,16 +37,16 @@ export const getCoverSourceFromEnrichment = (source: EnrichmentSource): 'google'
   source === 'google_books' ? 'google' : 'openlibrary'
 
 export const fetchEnrichmentPayload = async (
-  titulo: string,
-  autor: string,
+  title: string,
+  author: string,
   isbn?: string,
 ): Promise<EnrichmentPayload | null> => {
-  const googleData = await fetchGoogleBooks(titulo, autor, isbn)
+  const googleData = await fetchGoogleBooks(title, author, isbn)
   if (googleData) {
     return { data: googleData, source: 'google_books' }
   }
 
-  const openLibraryData = await fetchOpenLibrary(titulo, autor, isbn)
+  const openLibraryData = await fetchOpenLibrary(title, author, isbn)
   if (openLibraryData) {
     return { data: openLibraryData, source: 'open_library' }
   }

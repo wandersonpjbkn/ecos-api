@@ -29,16 +29,16 @@ router.post(
   validateCreateNamed,
   async (req: AuthRequest, res: Response) => {
     try {
-      const nome = req.body.nome.trim()
-      const slug = slugify(nome)
+      const name = req.body.nome.trim()
+      const slug = slugify(name)
       const exists = await Categoria.findOne({ slug })
       if (exists) {
         res.status(409).json({ error: `O gênero "${exists.nome}" já existe.` })
         return
       }
-      const categoria = await Categoria.create({ nome, slug, created_by: req.user!._id })
-      console.log(`[POST /categorias] "${categoria.nome}" criada por ${req.user!.email}`)
-      res.status(201).json(categoria)
+      const genre = await Categoria.create({ nome: name, slug, created_by: req.user!._id })
+      console.log(`[POST /categorias] "${genre.nome}" criada por ${req.user!.email}`)
+      res.status(201).json(genre)
     } catch (err) {
       console.error('[POST /categorias]', err)
       handleDataError(res, err, 'Não foi possível criar o gênero. Tente de novo.')
@@ -54,8 +54,8 @@ router.patch(
   validateCreateNamed,
   async (req: AuthRequest, res: Response) => {
     try {
-      const nome = req.body.nome.trim()
-      const slug = slugify(nome)
+      const name = req.body.nome.trim()
+      const slug = slugify(name)
 
       const conflict = await Categoria.findOne({ slug, _id: { $ne: req.params.id } })
       if (conflict) {
@@ -63,18 +63,18 @@ router.patch(
         return
       }
 
-      const categoria = await Categoria.findByIdAndUpdate(
+      const genre = await Categoria.findByIdAndUpdate(
         req.params.id,
-        { nome, slug },
+        { nome: name, slug },
         { new: true },
       )
-      if (!categoria) {
+      if (!genre) {
         res.status(404).json({ error: 'Não achamos esse gênero.' })
         return
       }
 
-      console.log(`[PATCH /categorias/:id] "${categoria.nome}" atualizada por ${req.user!.email}`)
-      res.json(categoria)
+      console.log(`[PATCH /categorias/:id] "${genre.nome}" atualizada por ${req.user!.email}`)
+      res.json(genre)
     } catch (err) {
       console.error('[PATCH /categorias/:id]', err)
       handleDataError(res, err, 'Não foi possível salvar o gênero. Tente de novo.')
@@ -96,12 +96,12 @@ router.delete(
           .json({ error: 'Há livros com esse gênero. Troque o gênero deles antes de remover.' })
         return
       }
-      const categoria = await Categoria.findByIdAndDelete(req.params.id)
-      if (!categoria) {
+      const genre = await Categoria.findByIdAndDelete(req.params.id)
+      if (!genre) {
         res.status(404).json({ error: 'Não achamos esse gênero.' })
         return
       }
-      console.log(`[DELETE /categorias/:id] "${categoria.nome}" removida por ${req.user!.email}`)
+      console.log(`[DELETE /categorias/:id] "${genre.nome}" removida por ${req.user!.email}`)
       res.status(204).send()
     } catch (err) {
       console.error('[DELETE /categorias/:id]', err)

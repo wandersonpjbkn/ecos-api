@@ -89,10 +89,10 @@ const bookFieldsError = (
   const userId = body.quem_user_id
   if (userId !== undefined && userId !== null && userId !== '' && !isObjectId(userId)) return 'Escolha alguém da lista.'
   if (!isOptionalString(body.quem_nome)) return 'Escolha alguém da lista.'
-  const subgeneros = body.subgeneros
+  const subgenres = body.subgeneros
   if (
-    subgeneros !== undefined &&
-    (!Array.isArray(subgeneros) || subgeneros.some((id) => !isObjectId(id)))
+    subgenres !== undefined &&
+    (!Array.isArray(subgenres) || subgenres.some((id) => !isObjectId(id)))
   ) {
     return 'Algum subgênero não é válido.'
   }
@@ -166,9 +166,6 @@ export const validateCreateNamed = (req: AuthRequest, res: Response, next: NextF
   }
   next()
 }
-
-export const validateCreateSubgenero = validateCreateNamed
-
 // ── Params ────────────────────────────────────────────────────────
 
 export const validateObjectId =

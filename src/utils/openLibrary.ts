@@ -88,8 +88,8 @@ const extractResult = (doc: OpenLibraryDoc, strategy: OpenLibraryStrategy): Open
 }
 
 export const fetchOpenLibrary = async (
-  titulo: string,
-  autor: string,
+  title: string,
+  author: string,
   isbn?: string,
 ): Promise<OpenLibraryResult | null> => {
   if (isbn) {
@@ -98,7 +98,7 @@ export const fetchOpenLibrary = async (
     try {
       const doc = await fetchDoc(`${API_BASE}?isbn=${encodeURIComponent(cleanIsbn)}&limit=1`)
       if (doc) {
-        console.log(`[openLibrary] ✅ ISBN match: "${titulo}"`)
+        console.log(`[openLibrary] ✅ ISBN match: "${title}"`)
         return extractResult(doc, 'openlibrary_isbn')
       }
     } catch (err) {
@@ -107,16 +107,16 @@ export const fetchOpenLibrary = async (
   }
 
   try {
-    const query = `${API_BASE}?title=${encodeURIComponent(titulo)}&author=${encodeURIComponent(autor)}&limit=1`
+    const query = `${API_BASE}?title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&limit=1`
     const doc = await fetchDoc(query)
     if (doc) {
-      console.log(`[openLibrary] ✅ título+autor match: "${titulo}"`)
+      console.log(`[openLibrary] ✅ título+autor match: "${title}"`)
       return extractResult(doc, 'openlibrary_title_author')
     }
   } catch (err) {
-    console.warn(`[openLibrary] Falha na busca por título+autor "${titulo}":`, err)
+    console.warn(`[openLibrary] Falha na busca por título+autor "${title}":`, err)
   }
 
-  console.log(`[openLibrary] ⏭️  Sem resultado para "${titulo}" — ${autor}`)
+  console.log(`[openLibrary] ⏭️  Sem resultado para "${title}" — ${author}`)
   return null
 }

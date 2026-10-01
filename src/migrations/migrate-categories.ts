@@ -51,39 +51,39 @@ const run = async () => {
   let errors = 0
 
   for (const book of books) {
-    const categoriaRaw = book.categoria
+    const raw = book.categoria
 
     // Já é ObjectId — não precisa migrar
-    if (categoriaRaw instanceof mongoose.Types.ObjectId) {
+    if (raw instanceof mongoose.Types.ObjectId) {
       skipped++
       continue
     }
 
     // É string — precisa converter
-    if (typeof categoriaRaw !== 'string' || !categoriaRaw.trim()) {
+    if (typeof raw !== 'string' || !raw.trim()) {
       console.warn(`⚠️  "${book.titulo}" sem categoria válida — ignorado`)
       skipped++
       continue
     }
 
     try {
-      const nome = categoriaRaw.trim()
-      const slug = slugify(nome)
+      const name = raw.trim()
+      const slug = slugify(name)
 
       // Upsert — cria a categoria se não existir
-      const categoria = await Categoria.findOneAndUpdate(
+      const doc = await Categoria.findOneAndUpdate(
         { slug },
-        { $setOnInsert: { nome, slug, created_by: systemUser._id } },
+        { $setOnInsert: { nome: name, slug, created_by: systemUser._id } },
         { upsert: true, new: true },
       )
 
       // Atualiza o livro com o ObjectId
       await db
         .collection('books')
-        .updateOne({ _id: book._id }, { $set: { categoria: categoria!._id } })
+        .updateOne({ _id: book._id }, { $set: { categoria: doc!._id } })
 
       converted++
-      console.log(`✅ "${book.titulo}" → categoria "${nome}" (${categoria!._id})`)
+      console.log(`✅ "${book.titulo}" → categoria "${name}" (${doc!._id})`)
     } catch (err) {
       errors++
       console.error(`❌ "${book.titulo}":`, err)

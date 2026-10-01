@@ -3,7 +3,7 @@ import type { Response } from 'express'
 
 import { authenticate } from '@/middleware/authenticate.js'
 import { authorize } from '@/middleware/authorize.js'
-import { validateCreateSubgenero, validateObjectId } from '@/middleware/validate.js'
+import { validateCreateNamed, validateObjectId } from '@/middleware/validate.js'
 import { Book } from '@/models/Book.js'
 import { Subgenero } from '@/models/Subgenero.js'
 import type { AuthRequest } from '@/types/index.ts'
@@ -17,8 +17,8 @@ router.use(authenticate)
 // ── GET /subgeneros ───────────────────────────────────────────────
 router.get('/', authorize('subgeneros', 'read'), async (_req, res: Response) => {
   try {
-    const subgeneros = await Subgenero.find().sort({ nome: 1 }).lean()
-    res.json(subgeneros)
+    const subgenres = await Subgenero.find().sort({ nome: 1 }).lean()
+    res.json(subgenres)
   } catch (err) {
     console.error('[GET /subgeneros]', err)
     handleDataError(res, err, 'Não foi possível carregar os subgêneros. Tente de novo.')
@@ -29,11 +29,11 @@ router.get('/', authorize('subgeneros', 'read'), async (_req, res: Response) => 
 router.post(
   '/',
   authorize('subgeneros', 'create'),
-  validateCreateSubgenero,
+  validateCreateNamed,
   async (req: AuthRequest, res: Response) => {
     try {
-      const nome = req.body.nome.trim()
-      const slug = slugify(nome)
+      const name = req.body.nome.trim()
+      const slug = slugify(name)
 
       const exists = await Subgenero.findOne({ slug })
       if (exists) {
@@ -41,14 +41,14 @@ router.post(
         return
       }
 
-      const subgenero = await Subgenero.create({
-        nome,
+      const subgenre = await Subgenero.create({
+        nome: name,
         slug,
         created_by: req.user!._id,
       })
 
-      console.log(`[POST /subgeneros] "${nome}" criado por ${req.user!.email}`)
-      res.status(201).json(subgenero)
+      console.log(`[POST /subgeneros] "${name}" criado por ${req.user!.email}`)
+      res.status(201).json(subgenre)
     } catch (err) {
       console.error('[POST /subgeneros]', err)
       handleDataError(res, err, 'Não foi possível criar o subgênero. Tente de novo.')
@@ -61,11 +61,11 @@ router.patch(
   '/:id',
   validateObjectId('id'),
   authorize('subgeneros', 'update'),
-  validateCreateSubgenero,
+  validateCreateNamed,
   async (req: AuthRequest, res: Response) => {
     try {
-      const nome = req.body.nome.trim()
-      const slug = slugify(nome)
+      const name = req.body.nome.trim()
+      const slug = slugify(name)
 
       const conflict = await Subgenero.findOne({ slug, _id: { $ne: req.params.id } })
       if (conflict) {
@@ -73,18 +73,18 @@ router.patch(
         return
       }
 
-      const subgenero = await Subgenero.findByIdAndUpdate(
+      const subgenre = await Subgenero.findByIdAndUpdate(
         req.params.id,
-        { nome, slug },
+        { nome: name, slug },
         { new: true },
       )
-      if (!subgenero) {
+      if (!subgenre) {
         res.status(404).json({ error: 'Não achamos esse subgênero.' })
         return
       }
 
-      console.log(`[PATCH /subgeneros/:id] "${subgenero.nome}" atualizado por ${req.user!.email}`)
-      res.json(subgenero)
+      console.log(`[PATCH /subgeneros/:id] "${subgenre.nome}" atualizado por ${req.user!.email}`)
+      res.json(subgenre)
     } catch (err) {
       console.error('[PATCH /subgeneros/:id]', err)
       handleDataError(res, err, 'Não foi possível salvar o subgênero. Tente de novo.')
@@ -115,13 +115,13 @@ router.delete(
   authorize('subgeneros', 'delete'),
   async (req: AuthRequest, res: Response) => {
     try {
-      const subgenero = await Subgenero.findByIdAndDelete(req.params.id)
-      if (!subgenero) {
+      const subgenre = await Subgenero.findByIdAndDelete(req.params.id)
+      if (!subgenre) {
         res.status(404).json({ error: 'Não achamos esse subgênero.' })
         return
       }
 
-      console.log(`[DELETE /subgeneros/:id] "${subgenero.nome}" removido por ${req.user!.email}`)
+      console.log(`[DELETE /subgeneros/:id] "${subgenre.nome}" removido por ${req.user!.email}`)
       res.status(204).send()
     } catch (err) {
       console.error('[DELETE /subgeneros/:id]', err)

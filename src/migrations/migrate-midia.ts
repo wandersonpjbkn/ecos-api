@@ -56,19 +56,19 @@ const run = async () => {
     }
 
     try {
-      const nome = raw.trim()
-      const slug = slugify(nome)
+      const name = raw.trim()
+      const slug = slugify(name)
 
       const doc = await Midia.findOneAndUpdate(
         { slug },
-        { $setOnInsert: { nome, slug, created_by: systemUser._id } },
+        { $setOnInsert: { nome: name, slug, created_by: systemUser._id } },
         { upsert: true, new: true },
       )
 
       await db.collection('books').updateOne({ _id: book._id }, { $set: { midia: doc!._id } })
 
       converted++
-      console.log(`  ✅ "${book.titulo}" → midia: "${nome}" (${doc!._id})`)
+      console.log(`  ✅ "${book.titulo}" → midia: "${name}" (${doc!._id})`)
     } catch (err) {
       errors++
       console.error(`  ❌ "${book.titulo}":`, err)

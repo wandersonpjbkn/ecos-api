@@ -97,13 +97,13 @@ router.post(
 
         try {
           // Guarda de tipo: autor pode não ter sido populado em documentos com migração incompleta
-          const autorPopulated =
+          const authorPopulated =
             // eslint-disable-next-line sonarjs/different-types-comparison -- populate yields null for a deleted author
             book.autor !== null &&
             typeof book.autor === 'object' &&
             'nome' in (book.autor as object)
 
-          if (!autorPopulated) {
+          if (!authorPopulated) {
             console.warn(`[enrich] ⚠️  "${book.titulo}" sem autor populado — pulando`)
             skipped++
             results.push({
@@ -115,9 +115,9 @@ router.post(
             continue
           }
 
-          const autorNome = (book.autor as unknown as { nome: string }).nome
+          const authorName = (book.autor as unknown as { nome: string }).nome
 
-          const enrichment = await fetchEnrichmentPayload(book.titulo, autorNome, book.isbn)
+          const enrichment = await fetchEnrichmentPayload(book.titulo, authorName, book.isbn)
 
           if (!enrichment?.data) {
             skipped++
