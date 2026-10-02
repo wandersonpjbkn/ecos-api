@@ -19,7 +19,10 @@ const PUBLIC_FIELDS = [
   'added_at',
 ] as const
 
-export const publicBook = (book: Record<string, unknown>) =>
+export const publicBook = (book: object) =>
   Object.fromEntries(
-    PUBLIC_FIELDS.filter((field) => field in book).map((field) => [field, book[field]]),
+    PUBLIC_FIELDS.filter((field) => field in book).map((field) => [
+      field,
+      (book as Record<string, unknown>)[field],
+    ]),
   )

@@ -143,7 +143,7 @@ router.post(
       const book = await Book.create({ ...payload, added_by: user._id, edit_history: [] })
 
       console.log(`[POST /books] "${book.titulo}" criado por ${req.user!.email}`)
-      res.status(201).json(book)
+      res.status(201).json(publicBook(book.toObject()))
     } catch (err) {
       console.error('[POST /books]', err)
       handleDataError(res, err, 'Não foi possível criar o livro. Tente de novo.')
@@ -175,7 +175,7 @@ router.put(
       markBookEdit(book, payload, marks)
 
       await book.save()
-      res.json(book)
+      res.json(publicBook(book.toObject()))
     } catch (err) {
       console.error('[PUT /books/:id]', err)
       handleDataError(res, err, 'Não foi possível salvar o livro. Tente de novo.')
@@ -209,7 +209,7 @@ router.patch(
       await book.save()
 
       console.log(`[PATCH /books/:id] "${book.titulo}" editado por ${user.email}`)
-      res.json(book)
+      res.json(publicBook(book.toObject()))
     } catch (err) {
       console.error('[PATCH /books/:id]', err)
       handleDataError(res, err, 'Não foi possível salvar o livro. Tente de novo.')
@@ -357,7 +357,7 @@ router.post(
         message: 'Enriquecimento aplicado com sucesso.',
         source: enrichment.source,
         applied_fields: Object.keys(payload),
-        book,
+        book: publicBook(book.toObject()),
       })
     } catch (err) {
       console.error('[POST /books/:id/enrich/apply]', err)

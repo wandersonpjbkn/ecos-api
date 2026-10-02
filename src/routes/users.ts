@@ -20,6 +20,7 @@ import type { AuthRequest } from '@/types/index.ts'
 import { applyOwnerFields, markBookEdit, OWNER_TRACKED, recordBookEdit } from '@/utils/bookEdit.js'
 import { claimMatch, freePlaceholderNames } from '@/utils/bookPerson.js'
 import { handleDataError } from '@/utils/httpErrors.js'
+import { publicBook } from '@/utils/publicBook.js'
 import {
   deleteSupabaseAccount,
   SupabaseAdminError,
@@ -286,7 +287,7 @@ router.patch(
       await book.save()
 
       console.log(`[PATCH /users/me/books/:id] "${book.titulo}" editado por ${user.email}`)
-      res.json(book)
+      res.json(publicBook(book.toObject()))
     } catch (err) {
       console.error('[PATCH /users/me/books/:id]', err)
       handleDataError(res, err, 'Não foi possível salvar o livro. Tente de novo.')
