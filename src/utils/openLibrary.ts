@@ -12,7 +12,6 @@
 type OpenLibraryStrategy = 'openlibrary_isbn' | 'openlibrary_title_author'
 
 export interface OpenLibraryResult {
-  google_books_id: string
   cover_url?: string
   synopsis?: string
   publisher?: string
@@ -23,13 +22,11 @@ export interface OpenLibraryResult {
 }
 
 interface OpenLibraryDoc {
-  key?: string
   cover_i?: number
   isbn?: string[]
   first_sentence?: string | { value?: string }[]
   number_of_pages_median?: number
   first_publish_year?: number
-  edition_key?: string[]
   publisher?: string[]
 }
 
@@ -71,12 +68,10 @@ const coverUrlOf = (isbn: string | undefined, coverId: number | undefined): stri
 
 const extractResult = (doc: OpenLibraryDoc, strategy: OpenLibraryStrategy): OpenLibraryResult => {
   const isbn = doc.isbn?.[0]
-  const openLibraryId = doc.edition_key?.[0] ?? doc.key ?? 'openlibrary:unknown'
 
   const cover_url = coverUrlOf(isbn, doc.cover_i)
 
   return {
-    google_books_id: `openlibrary:${openLibraryId}`,
     cover_url,
     synopsis: toSynopsis(doc.first_sentence),
     publisher: doc.publisher?.[0],

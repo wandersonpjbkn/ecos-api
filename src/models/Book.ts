@@ -21,7 +21,6 @@ export interface IBook {
   publisher?: string
   page_count?: number
   published_year?: number
-  google_books_id?: string
   enriched_at?: Date
   manually_edited_at?: Date | null
 
@@ -62,7 +61,6 @@ const BookSchema = new Schema<IBook>(
     publisher: { type: String },
     page_count: { type: Number },
     published_year: { type: Number },
-    google_books_id: { type: String },
     enriched_at: { type: Date },
     manually_edited_at: { type: Date, default: null },
 
@@ -78,7 +76,6 @@ BookSchema.index({ authors: 1 })
 BookSchema.index({ categoria: 1 })
 BookSchema.index({ midia: 1 })
 BookSchema.index({ subgeneros: 1 })
-BookSchema.index({ google_books_id: 1 }, { sparse: true })
 BookSchema.index({ isbn: 1 }, { sparse: true })
 
 // Every book is mentioned by someone: a placeholder from the first load or an account (fatia 8c).

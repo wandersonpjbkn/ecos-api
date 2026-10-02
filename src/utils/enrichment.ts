@@ -17,7 +17,6 @@ const ENRICHMENT_FIELDS = new Set([
   'isbn',
   'page_count',
   'published_year',
-  'google_books_id',
 ])
 
 // null, undefined and '' are the same empty value: comparing them raw writes history for edits nobody made.

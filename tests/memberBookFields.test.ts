@@ -30,6 +30,14 @@ describe('validateMemberUpdateBook', () => {
 
     expect(res.status).toBe(400)
   })
+
+  it('no longer takes a Google Books code: a club book is not tied to Google', async () => {
+    const res = await request(buildApp())
+      .patch('/me/books/1')
+      .send({ google_books_id: 'NNozEAAAQBAJ' })
+
+    expect(res.status).toBe(400)
+  })
 })
 
 describe('applyOwnerFields', () => {

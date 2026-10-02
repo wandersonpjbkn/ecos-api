@@ -13,7 +13,6 @@ const PUBLIC_FIELDS = [
   'publisher',
   'cover_url',
   'synopsis',
-  'google_books_id',
   'page_count',
   'published_year',
   'added_at',

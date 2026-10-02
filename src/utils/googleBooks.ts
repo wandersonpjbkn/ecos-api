@@ -13,7 +13,6 @@
 type GoogleBooksStrategy = 'isbn' | 'title_author_pt' | 'title_author'
 
 interface GoogleBooksResult {
-  google_books_id: string
   cover_url?: string
   synopsis?: string
   publisher?: string
@@ -136,7 +135,6 @@ const extractResult = (
     : undefined
 
   return {
-    google_books_id: volume.id,
     cover_url,
     synopsis: info.description ?? undefined,
     publisher: info.publisher ?? undefined,

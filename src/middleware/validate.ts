@@ -24,7 +24,6 @@ const FIELD = {
   isbn: 'o ISBN',
   cover_url: 'a capa',
   cover_source: 'a origem da capa',
-  google_books_id: 'o código do Google Books',
   publisher: 'a editora',
   page_count: 'o número de páginas',
   published_year: 'o ano',
@@ -42,14 +41,7 @@ const ALIAS: Record<string, BookField> = {
 const REQUIRED_TEXT: BookField[] = ['titulo']
 const IDS: BookField[] = ['categoria', 'midia']
 const isIdList = (v: unknown): v is unknown[] => Array.isArray(v) && v.every(isObjectId)
-const OPTIONAL_TEXT: BookField[] = [
-  'porque',
-  'synopsis',
-  'isbn',
-  'cover_url',
-  'google_books_id',
-  'publisher',
-]
+const OPTIONAL_TEXT: BookField[] = ['porque', 'synopsis', 'isbn', 'cover_url', 'publisher']
 const POSITIVE_INT: BookField[] = ['page_count', 'published_year']
 
 const ADMIN_FIELDS = [...Object.keys(FIELD), ...Object.keys(ALIAS)]

@@ -257,7 +257,6 @@ router.post(
           isbn: enrichment.data.isbn,
           pageCount: enrichment.data.page_count,
           publishedYear: enrichment.data.published_year,
-          externalId: enrichment.data.google_books_id,
           strategy: enrichment.data.strategy,
         },
       })
@@ -344,7 +343,6 @@ router.post(
 
       const normalizedPayload = normalizeBookInput(payload)
       Object.assign(book, normalizedPayload)
-      book.google_books_id = enrichment.data.google_books_id
       book.enriched_at = new Date()
 
       if (normalizedPayload.cover_url !== undefined) {

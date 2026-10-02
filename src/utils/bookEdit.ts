@@ -33,7 +33,6 @@ export const OWNER_TRACKED = [
   'synopsis',
   'isbn',
   'cover_url',
-  'google_books_id',
   'publisher',
   'page_count',
   'published_year',

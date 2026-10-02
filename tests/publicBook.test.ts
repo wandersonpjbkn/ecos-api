@@ -25,6 +25,7 @@ const stored = {
     },
   ],
   manually_edited_at: new Date(),
+  google_books_id: 'NNozEAAAQBAJ',
   enriched_at: new Date(),
   cover_source: 'google',
   __v: 0,
@@ -46,6 +47,7 @@ const SERVER_ONLY = [
   'manually_edited_at',
   'enriched_at',
   'cover_source',
+  'google_books_id',
   '__v',
 ]
 
