@@ -22,6 +22,7 @@ import {
   mainAuthorName,
 } from '@/utils/enrichment.js'
 import { handleDataError } from '@/utils/httpErrors.js'
+import { publicBook } from '@/utils/publicBook.js'
 
 const normalizeBookInput = (body: Record<string, unknown>): Record<string, unknown> => {
   const normalized = { ...body }
@@ -66,7 +67,7 @@ router.get('/', async (_req, res: Response) => {
 
     // Any copy may be kept, but is checked first: the ETag turns an unchanged catalog into a 304 with no body.
     res.set('Cache-Control', 'no-cache')
-    res.json(books)
+    res.json(books.map(publicBook))
   } catch (err) {
     console.error('[GET /books]', err)
     handleDataError(res, err, 'Não foi possível carregar os livros. Tente de novo.')
@@ -96,7 +97,6 @@ router.get('/:id', validateObjectId('id'), async (req: AuthRequest, res: Respons
       .populate('midia', 'nome slug')
       .populate('subgeneros', 'nome slug')
       .populate('quem_user_id', 'name')
-      .populate('added_by', 'name')
       .lean()
 
     if (!book) {
@@ -104,7 +104,7 @@ router.get('/:id', validateObjectId('id'), async (req: AuthRequest, res: Respons
       return
     }
 
-    res.json(book)
+    res.json(publicBook(book))
   } catch (err) {
     console.error('[GET /books/:id]', err)
     handleDataError(res, err, 'Não foi possível abrir o livro. Tente de novo.')
