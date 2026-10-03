@@ -14,7 +14,13 @@ const ACCEPTED = [
 ]
 
 const today = new Date().toISOString().slice(0, 10)
-const run = spawnSync('yarn', ['audit', '--json'], {
+// The yarn that runs this script (`yarn audit:check`), not whatever `yarn` the PATH finds.
+const yarn = process.env.npm_execpath
+if (!yarn) {
+  console.error('Rode pelo yarn: yarn audit:check')
+  process.exit(1)
+}
+const run = spawnSync(process.execPath, [yarn, 'audit', '--json'], {
   encoding: 'utf8',
   maxBuffer: 64 * 1024 * 1024,
 })
