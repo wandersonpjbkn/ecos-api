@@ -5,7 +5,6 @@ import app from '@/app.js'
 
 const GLOBAL_LIMIT = 300
 
-// What Render hands the app: the client, then Cloudflare, then its own load balancer.
 const renderChain = (client: string) => `${client}, 162.158.0.1, 10.0.0.1`
 
 const exhaust = async (forwardedFor: (i: number) => string) => {

@@ -50,7 +50,7 @@ const normalizeBookInput = (body: Record<string, unknown>): Record<string, unkno
 
 const router = Router()
 
-// ── GET /books — público ──────────────────────────────────────────
+// ── GET /books ──────────────────────────────────────────
 router.get('/', async (_req, res: Response) => {
   try {
     const books = await Book.find()
@@ -62,7 +62,6 @@ router.get('/', async (_req, res: Response) => {
       .sort({ added_at: -1 })
       .lean()
 
-    // Any copy may be kept, but is checked first: the ETag turns an unchanged catalog into a 304 with no body.
     res.set('Cache-Control', 'no-cache')
     res.json(books.map(publicBook))
   } catch (err) {
@@ -86,7 +85,6 @@ router.get(
 )
 
 // ── POST /books/enrich/search ─────────────────────────────────────
-// Saves nothing: the form saves what the person picks.
 router.post(
   '/enrich/search',
   authRateLimit,
@@ -112,7 +110,7 @@ router.post(
   },
 )
 
-// ── GET /books/:id — público ──────────────────────────────────────
+// ── GET /books/:id ──────────────────────────────────────
 router.get('/:id', validateObjectId('id'), async (req: AuthRequest, res: Response) => {
   try {
     const book = await Book.findById(req.params.id)
@@ -135,9 +133,8 @@ router.get('/:id', validateObjectId('id'), async (req: AuthRequest, res: Respons
   }
 })
 
-// ── GET /books/:id/reading — público ─────────────────────────────
+// ── GET /books/:id/reading ─────────────────────────────
 router.get('/:id/reading', validateObjectId('id'), async (req: AuthRequest, res: Response) => {
-  // Only totals: who wants to read or has read a book is private to each person.
   try {
     const totals = await ReadingStatus.aggregate<{ _id: ReadingStatusValue; total: number }>([
       { $match: { book_id: new Types.ObjectId(String(req.params.id)) } },
@@ -257,7 +254,6 @@ router.delete(
         return
       }
 
-      // A deleted book leaves no "Quero ler" / "Lido" pointing at nothing.
       await ReadingStatus.deleteMany({ book_id: book._id })
 
       console.log(`[DELETE /books/:id] "${book.titulo}" removido por ${req.user!.email}`)

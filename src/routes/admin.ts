@@ -11,7 +11,6 @@ import { handleDataError } from '@/utils/httpErrors.js'
 
 const router = Router()
 
-// The claims history is the Administrador's alone.
 router.use(authenticate)
 
 // ── GET /admin/users/claims/history ──────────────────────────────
@@ -24,7 +23,6 @@ router.get(
       const parsedLimit = Number(req.query.limit ?? 20)
       const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 500) : 20
 
-      // total is every record, not this page: the panel says when the list it got is only the most recent part.
       const [history, total] = await Promise.all([
         ClaimHistory.find()
           .sort({ performed_at: -1 })
@@ -36,7 +34,6 @@ router.get(
         ClaimHistory.countDocuments(),
       ])
 
-      // The person's current name, as on Membros; the e-mail stays for whoever has since left the club.
       const ids = [...new Set(history.map((entry) => String(entry.user_id)))]
       const users = await User.find({ _id: { $in: ids } })
         .select('name')

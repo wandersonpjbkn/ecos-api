@@ -31,7 +31,6 @@ const stored = {
   __v: 0,
 }
 
-// The query chain the routes build; every step returns the chain, `lean` resolves the stored book.
 const query = (result: unknown) => {
   const chain: Record<string, unknown> = {}
   for (const step of ['populate', 'sort', 'select']) chain[step] = () => chain

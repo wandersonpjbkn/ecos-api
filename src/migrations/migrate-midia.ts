@@ -1,13 +1,3 @@
-/**
- * Script de migração: midia string → ObjectId
- *
- * Uso:
- *  yarn migrate:midia
- *
- * Seguro para rodar múltiplas vezes — usa upsert e verifica antes de atualizar.
- * Execute APÓS migrate:categorias e APÓS atualizar Book.ts.
- */
-
 import 'dotenv/config'
 import mongoose from 'mongoose'
 

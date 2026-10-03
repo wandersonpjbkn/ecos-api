@@ -13,7 +13,6 @@ export const RESOURCES = [
 
 export const ACTIONS = ['create', 'read', 'update', 'delete'] as const
 
-/** What each resource's matrix really controls; the rest is fixed by the routes (public reads, admin-only). */
 export const CONFIGURABLE: Record<(typeof RESOURCES)[number], (typeof ACTIONS)[number][]> = {
   books: ['create', 'update', 'delete'],
   users: ['read'],
@@ -22,13 +21,11 @@ export const CONFIGURABLE: Record<(typeof RESOURCES)[number], (typeof ACTIONS)[n
   categorias: ['create', 'read', 'update', 'delete'],
   subgeneros: ['create', 'read', 'update', 'delete'],
   permissions: [],
-  // create: a new placeholder name ("Outro nome"); update: link one's own account to a name.
   claim: ['create', 'update'],
 }
 
-/** Permissões padrão aplicadas ao seed inicial do banco */
 export const DEFAULT_PERMISSIONS = [
-  // ── admin — acesso total ──────────────────────────────────────
+  // ── admin ──────────────────────────────────────
   { role: 'admin', resource: 'books', actions: ['create', 'read', 'update', 'delete'] },
   { role: 'admin', resource: 'users', actions: ['create', 'read', 'update', 'delete'] },
   { role: 'admin', resource: 'autores', actions: ['create', 'read', 'update', 'delete'] },
@@ -38,7 +35,7 @@ export const DEFAULT_PERMISSIONS = [
   { role: 'admin', resource: 'permissions', actions: ['create', 'read', 'update', 'delete'] },
   { role: 'admin', resource: 'claim', actions: ['create', 'update'] },
 
-  // ── editor — cria e lê entidades de catálogo; lê usuários ────
+  // ── editor ──────────────────────────────────
   { role: 'editor', resource: 'books', actions: ['create', 'read', 'update'] },
   { role: 'editor', resource: 'users', actions: ['read'] },
   { role: 'editor', resource: 'autores', actions: ['create', 'read'] },
@@ -48,7 +45,7 @@ export const DEFAULT_PERMISSIONS = [
   { role: 'editor', resource: 'permissions', actions: [] },
   { role: 'editor', resource: 'claim', actions: ['update'] },
 
-  // ── viewer — somente leitura ──────────────────────────────────
+  // ── viewer ──────────────────────────────────
   { role: 'viewer', resource: 'books', actions: ['read'] },
   { role: 'viewer', resource: 'users', actions: [] },
   { role: 'viewer', resource: 'autores', actions: ['read'] },

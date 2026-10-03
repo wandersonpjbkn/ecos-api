@@ -4,13 +4,6 @@ import { Permission } from '@/models/Permission.js'
 import type { AuthRequest, Resource, Action } from '@/types/index.ts'
 import { handleDataError } from '@/utils/httpErrors.js'
 
-/**
- * Fábrica de middleware de autorização.
- * Uso: authorize('books', 'update'), ou uma lista: authorize('books', ['create', 'update']) aceita qualquer uma.
- *
- * Busca as permissões do role do usuário autenticado no banco
- * e verifica se a action solicitada está permitida.
- */
 export const authorize =
   (resource: Resource, action: Action | Action[]) =>
   async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {

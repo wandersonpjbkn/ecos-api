@@ -1,23 +1,3 @@
-/**
- * Script de migração: CSV → MongoDB
- *
- * O que faz:
- *  1. Conecta ao MongoDB e cria permissões padrão (seed)
- *  2. Cria um usuário-sistema para o added_by dos livros migrados
- *  3. Cria os sub-gêneros únicos do CSV
- *  4. Cria (ou encontra) documentos Autor, Midia e Categoria para cada valor único
- *  5. Importa os livros com os ObjectIds corretos para todos os campos ref
- *
- * Uso:
- *  yarn migrate:csv
- *
- * Seguro para rodar múltiplas vezes — usa upsert em tudo.
- *
- * Nota: este script já resolve autor, midia e categoria como ObjectIds.
- * NÃO é necessário rodar migrate:categorias, migrate:autor ou migrate:midia
- * após este script em um banco limpo.
- */
-
 import 'dotenv/config'
 import { createReadStream } from 'fs'
 import { dirname, resolve } from 'path'
@@ -59,7 +39,6 @@ const SYSTEM_USER = {
 
 // ── Helpers ───────────────────────────────────────────────────────
 
-/** Upsert genérico para entidades com nome+slug+created_by */
 const upsertNamed = async (
   Model: typeof Autor | typeof Midia | typeof Categoria,
   name: string,
@@ -111,7 +90,7 @@ const parseCSV = (filePath: string): Promise<CsvRow[]> =>
       .on('error', reject)
   })
 
-// ── Migração ──────────────────────────────────────────────────────
+// ── Migration ──────────────────────────────────────────────────────
 
 const run = async () => {
   console.log('🚀 Iniciando migração CSV → MongoDB...\n')
@@ -119,7 +98,6 @@ const run = async () => {
   await connectDB()
   await seedPermissions()
 
-  // ── 1. Usuário-sistema ─────────────────────────────────────────
   console.log('👤 Criando usuário-sistema...')
   const systemUser = await User.findOneAndUpdate(
     { supabase_uid: SYSTEM_USER.supabase_uid },
@@ -128,7 +106,6 @@ const run = async () => {
   )
   console.log(`   ✅ ${systemUser.email} (${systemUser._id})\n`)
 
-  // ── 2. Parsear CSV ─────────────────────────────────────────────
   console.log(`📄 Lendo CSV: ${CSV_PATH}`)
   let rows: CsvRow[]
   try {
@@ -139,7 +116,6 @@ const run = async () => {
   }
   console.log(`   ✅ ${rows.length} livros encontrados\n`)
 
-  // ── 3. Sub-gêneros ─────────────────────────────────────────────
   console.log('🏷️  Criando sub-gêneros...')
   const allSubgenreNames = [...new Set(rows.flatMap((r) => r.subgeneros))]
   let subCreated = 0,
@@ -163,7 +139,6 @@ const run = async () => {
   }
   console.log(`   ✅ ${subCreated} criados, ${subSkipped} já existiam\n`)
 
-  // ── 4. Autores, Mídias, Categorias ────────────────────────────
   console.log('👤 Criando autores, mídias e categorias...')
 
   const authorMap = new Map<string, mongoose.Types.ObjectId>()
@@ -189,7 +164,6 @@ const run = async () => {
       ` ${uniqueGenres.length} categorias\n`,
   )
 
-  // ── 5. Livros ──────────────────────────────────────────────────
   console.log('📚 Importando livros...')
   let bookCreated = 0,
     bookSkipped = 0
@@ -248,7 +222,7 @@ const run = async () => {
     }
   }
 
-  // ── Resumo ─────────────────────────────────────────────────────
+  // ── Summary ─────────────────────────────────────────────────────
   console.log('\n─────────────────────────────────────')
   console.log('📊 Resumo da migração:')
   console.log(`   Sub-gêneros → ${subCreated} criados, ${subSkipped} já existiam`)

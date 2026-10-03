@@ -10,7 +10,6 @@ const isOptionalString = (v: unknown): boolean =>
 
 type BookField = keyof typeof FIELD
 
-// How a field is named on screen: the API answers in the words the reader sees, never the raw field name.
 const FIELD = {
   titulo: 'o título',
   authors: 'o autor',
@@ -30,7 +29,6 @@ const FIELD = {
   published_year: 'o ano',
 } as const
 
-// Older clients send these names; normalizeBookInput maps them before saving.
 const ALIAS: Record<string, BookField> = {
   description: 'synopsis',
   coverUrl: 'cover_url',
@@ -46,14 +44,12 @@ const OPTIONAL_TEXT: BookField[] = ['porque', 'synopsis', 'isbn', 'cover_url', '
 const POSITIVE_INT: BookField[] = ['page_count', 'published_year']
 
 const ADMIN_FIELDS = [...Object.keys(FIELD), ...Object.keys(ALIAS)]
-// The owner edits every field of the book except who mentioned it and where the cover or the ISBN came from.
 const MEMBER_FIELDS = Object.keys(FIELD).filter(
   (field) => !['quem_nome', 'quem_user_id', 'cover_source', 'isbn_source'].includes(field),
 )
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
 
-/** The one check for a book's fields, shared by create, replace and both edit routes; returns the sentence to show. */
 const bookFieldsError = (
   body: Record<string, unknown>,
   allowed: readonly string[],
@@ -69,7 +65,6 @@ const bookFieldsError = (
     body[field] ?? body[Object.keys(ALIAS).find((alias) => ALIAS[alias] === field) ?? '']
 
   const filled = (field: BookField) => {
-    // An empty or malformed list gets its own sentence below.
     if (field === 'authors') return value(field) !== undefined
     return IDS.includes(field) ? isObjectId(value(field)) : isString(value(field))
   }
@@ -83,7 +78,6 @@ const bookFieldsError = (
     if (value(field) !== undefined && !isObjectId(value(field)))
       return `${capitalize(FIELD[field])} não é válido.`
   }
-  // Who mentioned: an account id or a placeholder name, both optional (a new book defaults to whoever adds it).
   const userId = body.quem_user_id
   if (userId !== undefined && userId !== null && userId !== '' && !isObjectId(userId))
     return 'Escolha alguém da lista.'
@@ -165,7 +159,7 @@ export const validateUpdateStatus = (req: AuthRequest, res: Response, next: Next
   next()
 }
 
-// ── Entidades de catálogo (Autor, Midia, Categoria, Subgenero) ────
+// ── Catalog entities ──────────────────────────────────────────────
 
 export const validateCreateNamed = (req: AuthRequest, res: Response, next: NextFunction): void => {
   const { nome } = req.body
@@ -179,7 +173,7 @@ export const validateCreateNamed = (req: AuthRequest, res: Response, next: NextF
   }
   next()
 }
-// ── Busca de capa e dados ─────────────────────────────────────────
+// ── Book search ─────────────────────────────────────────
 
 export const validateBookSearch = (req: AuthRequest, res: Response, next: NextFunction): void => {
   const { title, author, isbn } = req.body ?? {}

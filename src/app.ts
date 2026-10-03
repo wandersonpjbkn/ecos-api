@@ -32,7 +32,6 @@ export const allowedOrigins = CORS_ORIGIN
 // ── App ───────────────────────────────────────────────────────────
 const app = express()
 
-// Render chain is client, Cloudflare, load balancer: the client is 3 hops back, whatever the caller wrote before it.
 app.set('trust proxy', 3)
 
 app.use(helmet())

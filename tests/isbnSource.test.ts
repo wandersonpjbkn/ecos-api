@@ -14,7 +14,6 @@ const stored = (fields: Record<string, unknown> = {}) =>
     ...fields,
   })
 
-// What a PATCH does: record, assign, mark.
 const edit = (book: ReturnType<typeof stored>, payload: Record<string, unknown>) => {
   const marks = recordBookEdit(book, payload, new Types.ObjectId(), PANEL_TRACKED)
   Object.assign(book, payload)

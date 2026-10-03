@@ -1,6 +1,3 @@
-// Same file in ecos-api and ecos-literarios: change both together.
-// Fails on high and critical advisories, except an accepted one, and only while every path to it is a dev dependency
-// and the review date has not passed. Yarn 1 has no way to accept a single advisory.
 import { spawnSync } from 'node:child_process'
 
 const ACCEPTED = [
@@ -14,7 +11,6 @@ const ACCEPTED = [
 ]
 
 const today = new Date().toISOString().slice(0, 10)
-// The yarn that runs this script (`yarn audit:check`), not whatever `yarn` the PATH finds.
 const yarn = process.env.npm_execpath
 if (!yarn) {
   console.error('Rode pelo yarn: yarn audit:check')

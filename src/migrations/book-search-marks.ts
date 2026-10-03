@@ -3,7 +3,6 @@ import * as Sentry from '@sentry/node'
 import { Book } from '@/models/Book.js'
 import { Permission } from '@/models/Permission.js'
 
-/** The bulk search left marks on books and a permission behind; runs on every start, touches only what still has them. */
 export const removeBulkSearchMarks = async (): Promise<void> => {
   try {
     const { modifiedCount } = await Book.collection.updateMany(

@@ -2,7 +2,6 @@ import * as Sentry from '@sentry/node'
 
 import { Book } from '@/models/Book.js'
 
-/** One author per book (`autor`) becomes a list (`authors`); runs on every start and only touches books not moved yet. */
 export const migrateBookAuthors = async (): Promise<void> => {
   try {
     const { modifiedCount } = await Book.collection.updateMany({ autor: { $exists: true } }, [

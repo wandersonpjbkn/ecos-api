@@ -10,7 +10,6 @@ const getDuplicatedField = (err: MongoServerError): string =>
   Object.keys((err as { keyValue?: Record<string, unknown> }).keyValue ?? {})[0] ??
   'campo único'
 
-// "PUT /books/:id": the route pattern, so the fallback text shared by several routes does not hide which one failed.
 const routeOf = (res: Response): string => {
   const req = res.req
   return req ? `${req.method} ${req.baseUrl}${req.route?.path ?? req.path}` : 'unknown'

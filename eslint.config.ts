@@ -7,6 +7,9 @@ import sonarjs from 'eslint-plugin-sonarjs'
 import prettier from 'eslint-config-prettier'
 
 import englishNames from './eslint/english-names.ts'
+import noComments from './eslint/no-comments.ts'
+
+const local = { rules: { ...englishNames.rules, ...noComments.rules } }
 
 export default defineConfig([
   {
@@ -51,17 +54,15 @@ export default defineConfig([
     },
   },
 
-  // Code and new database fields are named in English; the frozen lists are what already existed outside the code.
   {
     name: 'app/english-names',
     files: ['src/**/*.ts', 'tests/**/*.ts', 'eslint/**/*.ts'],
-    plugins: { local: englishNames },
+    plugins: { local },
     rules: {
       'local/english-names': [
         'error',
         {
           legacyNames: [
-            // Models over collections that already exist.
             'Autor',
             'AutorSchema',
             'IAutor',
@@ -76,7 +77,6 @@ export default defineConfig([
             'ISubgenero',
           ],
           legacyFields: [
-            // Database and API fields.
             'titulo',
             'autor',
             'autores',
@@ -97,13 +97,19 @@ export default defineConfig([
     },
   },
 
-  // RuleTester.run declares the cases, which sonarjs does not see as tests.
+  {
+    name: 'app/no-comments',
+    files: ['src/**/*.{ts,mts}', 'tests/**/*.ts', 'eslint/**/*.ts', 'scripts/**/*.mjs', '*.config.ts'],
+    languageOptions: { parser: tseslint.parser },
+    plugins: { local },
+    rules: { 'local/no-comments': 'error' },
+  },
+
   {
     files: ['eslint/**/*.test.ts'],
     rules: { 'sonarjs/no-empty-test-file': 'off' },
   },
 
-  // Complexity debt that predates sonarjs: warn here, error everywhere else.
   {
     files: [
       'src/middleware/validate.ts',

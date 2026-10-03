@@ -4,7 +4,6 @@ import { searchOpenLibrary } from '@/utils/openLibrary.js'
 
 export type EnrichmentSource = 'google_books' | 'open_library'
 
-// null, undefined and '' are the same empty value: comparing them raw writes history for edits nobody made.
 export const differs = (next: unknown, current: unknown) =>
   String(next ?? '') !== String(current ?? '')
 
@@ -14,7 +13,6 @@ export const changesCover = (payload: Record<string, unknown>, current: object):
 
 export const SEARCH_LIMIT = 5
 
-/** Up to five books for the form to choose from: Google first, Open Library when Google has none or does not answer. */
 export const searchCandidates = async (
   title: string,
   author: string,

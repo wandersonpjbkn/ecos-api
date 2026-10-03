@@ -92,7 +92,6 @@ router.patch(
   },
 )
 
-// ── DELETE /subgeneros/:id ────────────────────────────────────────
 // ── GET /subgeneros/:id/usage ─────────────────────────────────────
 router.get(
   '/:id/usage',
@@ -100,7 +99,6 @@ router.get(
   authorize('subgeneros', 'delete'),
   async (req: AuthRequest, res: Response) => {
     try {
-      // What the removal dialog tells the admin: counted here, not on a copy of the catalog kept in a browser.
       res.json({ books: await Book.countDocuments({ subgeneros: req.params.id }) })
     } catch (err) {
       console.error('[GET /subgeneros/:id/usage]', err)
@@ -109,6 +107,7 @@ router.get(
   },
 )
 
+// ── DELETE /subgeneros/:id ────────────────────────────────────────
 router.delete(
   '/:id',
   validateObjectId('id'),

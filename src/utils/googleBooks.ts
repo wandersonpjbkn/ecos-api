@@ -1,5 +1,3 @@
-// Without GOOGLE_BOOKS_API_KEY the requests share an anonymous quota that is often exhausted (429).
-
 import type { BookCandidate, CandidateSearch } from '@/utils/bookCandidate.js'
 
 type GoogleBooksStrategy = 'isbn' | 'title_author_pt' | 'title_author'
@@ -32,7 +30,6 @@ const API_BASE = 'https://www.googleapis.com/books/v1/volumes'
 const buildUrl = (query: string, keyParam: string, limit: number): string =>
   `${API_BASE}?q=${query}&maxResults=${limit}${keyParam}`
 
-// A refused or failed request throws: the caller tells "nothing found" apart from "the search did not answer".
 const fetchVolumes = async (url: string): Promise<GoogleBooksVolume[]> => {
   const res = await fetch(url)
   if (!res.ok) throw new Error(`Google Books ${res.status}`)
@@ -44,11 +41,9 @@ const fetchVolumes = async (url: string): Promise<GoogleBooksVolume[]> => {
 const toCandidate = (volume: GoogleBooksVolume): BookCandidate => {
   const info = volume.volumeInfo
 
-  // Prefere thumbnail sobre smallThumbnail e força HTTPS
   const rawCover = info.imageLinks?.thumbnail ?? info.imageLinks?.smallThumbnail
   const cover_url = rawCover?.replace(/^http:\/\//, 'https://') ?? undefined
 
-  // Extrai ISBN-13 preferencialmente, senão ISBN-10
   const isbn13 = info.industryIdentifiers?.find((i) => i.type === 'ISBN_13')?.identifier
   const isbn10 = info.industryIdentifiers?.find((i) => i.type === 'ISBN_10')?.identifier
 
@@ -70,7 +65,6 @@ const toCandidate = (volume: GoogleBooksVolume): BookCandidate => {
   }
 }
 
-/** Up to `limit` books from the first strategy that finds any, in Google's order (its guidelines forbid reordering). */
 export const searchGoogleBooks = async (
   title: string,
   author: string,
@@ -79,7 +73,6 @@ export const searchGoogleBooks = async (
 ): Promise<CandidateSearch<GoogleBooksStrategy>> => {
   const apiKey = process.env.GOOGLE_BOOKS_API_KEY
   const keyParam = apiKey ? `&key=${apiKey}` : ''
-  // Plain text: Google returns no results for intitle:/inauthor: queries.
   const titleAuthorQuery = encodeURIComponent(`${title} ${author}`)
 
   const strategies: Array<[GoogleBooksStrategy, string]> = [

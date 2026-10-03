@@ -1,4 +1,3 @@
-// Allowlist of what anyone, signed in or not, sees of a book; who added or edited it stays on the server.
 const PUBLIC_FIELDS = [
   '_id',
   'titulo',

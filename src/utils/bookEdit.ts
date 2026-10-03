@@ -38,7 +38,6 @@ export const OWNER_TRACKED = [
   'published_year',
 ] as const
 
-/** Logs each changed field; call it before the new values land, and pass the result to `markBookEdit` after. */
 export const recordBookEdit = (
   book: HydratedDocument<IBook>,
   payload: Record<string, unknown>,
@@ -64,16 +63,13 @@ export const recordBookEdit = (
   }
 }
 
-/** Where the cover and the ISBN came from; an emptied cover has no source to credit. */
 export const markBookEdit = (
   book: HydratedDocument<IBook>,
   payload: Record<string, unknown>,
   { coverChanged, isbnChanged, isbnSource }: ReturnType<typeof recordBookEdit>,
 ) => {
-  // The form says when the cover or the ISBN came from its search; anything else was typed by a person.
   if (coverChanged)
     book.cover_source = payload.cover_url ? (sourceOf(payload.cover_source) ?? 'manual') : undefined
-  // The same ISBN keeps its origin: a search that finds the number a person typed does not unconfirm it.
   if (!isbnChanged) book.isbn_source = isbnSource
   else book.isbn_source = payload.isbn ? isbnSourceOf(payload) : undefined
 }
@@ -81,13 +77,11 @@ export const markBookEdit = (
 const sourceOf = (value: unknown) =>
   value === 'google' || value === 'openlibrary' || value === 'manual' ? value : undefined
 
-/** Where a new ISBN came from: the form's search when it says so, a person otherwise. */
 export const isbnSourceOf = (payload: Record<string, unknown>): 'person' | 'search' =>
   payload.isbn_source === 'search' ? 'search' : 'person'
 
 const EMPTY_WHEN_NULL: readonly string[] = ['page_count', 'published_year']
 
-/** The owner's edit lands field by field: only what came in the body changes, and a cleared number is unset. */
 export const applyOwnerFields = (book: HydratedDocument<IBook>, body: Record<string, unknown>) => {
   for (const field of OWNER_TRACKED) {
     const value = body[field]

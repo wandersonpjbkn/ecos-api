@@ -46,7 +46,6 @@ router.use('/me/reading', readingRoutes)
 // ── GET /users ────────────────────────────────────────────────────
 router.get('/', authorize('users', 'read'), async (_req, res: Response) => {
   try {
-    // What the members list shows, nothing more: another person's preferences and legacy fields stay out.
     const users = await User.find()
       .select('name email role status created_at last_seen_at')
       .sort({ created_at: -1 })
@@ -59,7 +58,6 @@ router.get('/', authorize('users', 'read'), async (_req, res: Response) => {
 })
 
 // ── GET /users/me ─────────────────────────────────────────────────
-// The matrix of the person's own level, so the front can hide what the server would refuse (it never decides).
 router.get('/me', async (req: AuthRequest, res: Response) => {
   try {
     const rows = await Permission.find({ role: req.user!.role })
@@ -230,7 +228,6 @@ router.delete(
         return
       }
 
-      // Only the claimed placeholder's books go back to it; a book credited to the account itself stays credited.
       const result = await Book.updateMany(
         { quem_user_id: user._id, quem_nome: { $in: currentClaims } },
         { $unset: { quem_user_id: '' } },
@@ -330,7 +327,6 @@ router.patch(
   },
 )
 
-// What the members list shows about a person (GET /users), also sent back after a change.
 const memberView = (user: InstanceType<typeof User>) => ({
   _id: user._id,
   name: user.name,
@@ -341,7 +337,6 @@ const memberView = (user: InstanceType<typeof User>) => ({
   last_seen_at: user.last_seen_at,
 })
 
-// Only an Administrador with access reaches these, never on their own account: one always keeps access.
 const isOwnAccount = (req: AuthRequest) => req.params.id === req.user!._id.toString()
 
 // ── PATCH /users/:id/status ───────────────────────────────────────
@@ -365,7 +360,6 @@ router.patch(
         return
       }
 
-      // Supabase first: if it fails, nothing changed here, and sending it again is safe.
       await setSupabaseSuspended(user.supabase_uid, req.body.status === 'suspended')
       user.status = req.body.status
       await user.save()
@@ -403,9 +397,7 @@ router.delete(
         return
       }
 
-      // Supabase first, and every step after it can run again: a failure halfway is fixed by removing again.
       await deleteSupabaseAccount(user.supabase_uid)
-      // The books stay. Credited straight to the account, they keep its name as a placeholder; a claimed name keeps its own.
       await Book.updateMany(
         { quem_user_id: user._id, quem_nome: { $in: [null, ''] } },
         { $set: { quem_nome: user.name } },
@@ -462,7 +454,6 @@ router.patch('/me', authRateLimit, writeRateLimit, async (req: AuthRequest, res:
         return
       }
 
-      // A renamed or removed format drops out instead of failing: the answer is the list kept, and the front adopts it.
       const known = new Set<string>(await Midia.distinct('nome'))
       update.hidden_midias = [...new Set<string>(hidden_midias)].filter((m) => known.has(m))
     }

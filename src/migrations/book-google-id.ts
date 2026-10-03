@@ -2,7 +2,6 @@ import * as Sentry from '@sentry/node'
 
 import { Book } from '@/models/Book.js'
 
-/** The Google Books code tied a club book to Google; it goes from every book. Runs on every start, touches only books that still have it. */
 export const removeBookGoogleId = async (): Promise<void> => {
   try {
     const { modifiedCount } = await Book.collection.updateMany(

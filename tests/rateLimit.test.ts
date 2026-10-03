@@ -6,7 +6,6 @@ import { writeRateLimit } from '@/middleware/rateLimit.js'
 
 const WRITE_LIMIT = 30
 
-// Behind one proxy, the real client is the last X-Forwarded-For entry; anything before it is the caller's to write.
 const buildApp = () => {
   const app = express()
   app.set('trust proxy', 1)

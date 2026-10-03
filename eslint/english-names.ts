@@ -1,7 +1,5 @@
-// Same file in ecos-api and ecos-literarios: change both together.
 import type { Rule } from 'eslint'
 
-// Words that only make sense in Portuguese; English homographs (data, todos, cores, remover) stay out.
 const PORTUGUESE = new Set(
   `livro livros autor autores autora categoria categorias genero generos subgenero subgeneros midia midias formato
   formatos titulo titulos nome nomes quem porque leitura leituras lido lidos prateleira prateleiras estante membro
@@ -19,7 +17,6 @@ const words = (name: string) =>
   name
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    // "quemNome" and "IAutor" split before the capital that starts a word.
     .split(/(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|[\s_$-]+/)
     .map((word) => word.toLowerCase())
 
@@ -45,7 +42,6 @@ const rule: Rule.RuleModule = {
   },
   create(context) {
     const { legacyNames = [], legacyFields = [] } = (context.options[0] ?? {}) as Options
-    // A field that already exists in the database (or a model over it) keeps its name; anything new does not.
     const names = new Set(legacyNames)
     const fields = new Set(legacyFields)
 
@@ -59,7 +55,6 @@ const rule: Rule.RuleModule = {
       if (word) context.report({ node, messageId: 'portuguese', data: { name, word } })
     }
 
-    // A binding pattern: plain names, `{ key }` (the key is a field), `{ key: alias }`, `[a, b]`, defaults and rests.
     const checkPattern = (node: Rule.Node | null | undefined): void => {
       if (!node) return
       if (node.type === 'Identifier') return check(node, names)
@@ -93,7 +88,6 @@ const rule: Rule.RuleModule = {
       ArrowFunctionExpression: checkFunction,
       ClassDeclaration: (node) => check(node.id as Rule.Node, names),
       CatchClause: (node) => checkPattern(node.param as Rule.Node),
-      // Object keys and type members: where a database field, a payload or a schema gets its name.
       Property: (node) => {
         if (node.parent.type === 'ObjectExpression' && !node.computed && !node.shorthand)
           check(node.key as Rule.Node, fields)

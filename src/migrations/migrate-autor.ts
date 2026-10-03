@@ -1,13 +1,3 @@
-/**
- * Script de migração: autor string → ObjectId
- *
- * Uso:
- *  yarn migrate:autor
- *
- * Seguro para rodar múltiplas vezes — usa upsert e verifica antes de atualizar.
- * Execute APÓS migrate:categorias e APÓS atualizar Book.ts.
- */
-
 import 'dotenv/config'
 import mongoose from 'mongoose'
 

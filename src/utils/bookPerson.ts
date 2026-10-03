@@ -10,10 +10,8 @@ interface Actor {
   role: string
 }
 
-// Lowercase inside a name, never at its start: "Maria de Souza".
 const PARTICLES = new Set(['de', 'da', 'do', 'das', 'dos', 'e'])
 
-/** A person's name as the club writes it: each word capitalised, the rest lowercase; "Natália C." for two Natálias. */
 export const formatName = (raw: string): string =>
   raw
     .trim()
@@ -25,7 +23,6 @@ export const formatName = (raw: string): string =>
     })
     .join(' ')
 
-/** The same slug rule as authors and genres: "Natalia" and "natália" are one name, "Natalia C." another. */
 export const sameName = (a: string, b: string): boolean => slugify(a) === slugify(b)
 
 export class PersonError extends Error {
@@ -40,7 +37,6 @@ export class PersonError extends Error {
 const may = async (role: string, resource: string, action: string): Promise<boolean> =>
   !!(await Permission.exists({ role, resource, actions: action }))
 
-/** Placeholders from the first load, each with the account that claimed it (null while nobody has). */
 const placeholders = async (): Promise<{ name: string; userId: Types.ObjectId | null }[]> => {
   const rows = await Book.aggregate<{ _id: string; userId: Types.ObjectId | null }>([
     { $match: { quem_nome: { $type: 'string', $ne: '' } } },
@@ -49,14 +45,12 @@ const placeholders = async (): Promise<{ name: string; userId: Types.ObjectId | 
   return rows.map((row) => ({ name: row._id, userId: row.userId ?? null }))
 }
 
-/** The placeholders nobody has claimed: the names a person can still link to. */
 export const freePlaceholderNames = async (): Promise<string[]> =>
   (await placeholders())
     .filter((m) => !m.userId)
     .map((m) => m.name)
     .sort((a, b) => a.localeCompare(b, 'pt-BR'))
 
-// An account that has not linked yet is left out: next to its own placeholder it would be the same person twice.
 const linkedAccounts = (marks: { userId: Types.ObjectId | null }[]) => {
   const ids = [...new Set(marks.filter((m) => m.userId).map((m) => String(m.userId)))]
   return User.find({ _id: { $in: ids } })
@@ -64,7 +58,6 @@ const linkedAccounts = (marks: { userId: Types.ObjectId | null }[]) => {
     .lean()
 }
 
-/** Who a book can be credited to: accounts that linked a name, plus the placeholders nobody has linked yet. */
 export const creditablePeople = async (): Promise<{ user_id: string | null; name: string }[]> => {
   const marks = await placeholders()
   const users = await linkedAccounts(marks)
@@ -75,7 +68,6 @@ export const creditablePeople = async (): Promise<{ user_id: string | null; name
   return people.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
 }
 
-/** An unclaimed placeholder with this account's name: the add form asks "is this you?" before going on. */
 export const claimMatch = async (user: {
   _id: Types.ObjectId
   name: string
@@ -88,7 +80,6 @@ export const claimMatch = async (user: {
   return free.find((m) => sameName(m.name, user.name))?.name ?? null
 }
 
-/** Who mentioned the book (account or placeholder); a new book defaults to its adder, a new name needs claim: create. */
 export const applyBookPerson = async (
   payload: Record<string, unknown>,
   actor: Actor,
@@ -111,7 +102,6 @@ export const applyBookPerson = async (
     if (!Types.ObjectId.isValid(userId) || !(await User.exists({ _id: userId }))) {
       throw new PersonError(400, 'Escolha alguém da lista.')
     }
-    // Credited to the account itself; the claimed placeholder, if any, keeps its own books.
     payload.quem_user_id = new Types.ObjectId(userId)
     payload.quem_nome = null
     return
@@ -138,7 +128,6 @@ export const applyBookPerson = async (
       'Incluir um nome novo não está liberado para a sua conta. Escolha alguém da lista.',
     )
   }
-  // Only accounts in the list block the name; one that has not linked yet gets it as a placeholder to link later.
   const taken = (await linkedAccounts(marks)).find((u) => sameName(u.name, typed))
   if (taken) {
     throw new PersonError(

@@ -1,14 +1,3 @@
-/**
- * Utilitário de enriquecimento via Open Library API.
- *
- * Estratégia de busca (ordem de prioridade):
- *  1. ISBN
- *  2. Título + autor
- *
- * Guidelines Open Library:
- *  - Enviamos User-Agent identificável em todas as requests.
- */
-
 import type { BookCandidate, CandidateSearch } from '@/utils/bookCandidate.js'
 
 type OpenLibraryStrategy = 'openlibrary_isbn' | 'openlibrary_title_author'
@@ -32,13 +21,11 @@ interface OpenLibrarySearchResponse {
 }
 
 const API_BASE = 'https://openlibrary.org/search.json'
-// Asked for by name: the default answer has no ISBN, publisher, first sentence or page count.
 const FIELDS =
   'key,title,author_name,language,cover_i,isbn,first_sentence,number_of_pages_median,first_publish_year,publisher'
 const COVER_BASE = 'https://covers.openlibrary.org/b'
 const OPEN_LIBRARY_USER_AGENT = `${process.env.OPEN_LIBRARY_AGENT_LIB} (${process.env.OPEN_LIBRARY_AGENT_USER})`
 
-// A refused or failed request throws: the caller tells "nothing found" apart from "the search did not answer".
 const fetchDocs = async (url: string): Promise<OpenLibraryDoc[]> => {
   const res = await fetch(url, {
     headers: {
@@ -66,7 +53,6 @@ const coverUrlOf = (isbn: string | undefined, coverId: number | undefined): stri
   return undefined
 }
 
-// A result is a work, not an edition: with several, any one ISBN or language would be some edition's.
 const onlyOne = (values?: string[]) => (values?.length === 1 ? values[0] : undefined)
 
 const toCandidate = (doc: OpenLibraryDoc): BookCandidate => {
@@ -86,7 +72,6 @@ const toCandidate = (doc: OpenLibraryDoc): BookCandidate => {
   }
 }
 
-/** Up to `limit` works from the first strategy that finds any; `failed` when none answered. */
 export const searchOpenLibrary = async (
   title: string,
   author: string,

@@ -1,4 +1,4 @@
-import * as Sentry from '@sentry/node' // NEW
+import * as Sentry from '@sentry/node'
 import mongoose from 'mongoose'
 
 export const connectDB = async (): Promise<void> => {
