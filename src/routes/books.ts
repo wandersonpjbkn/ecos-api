@@ -9,15 +9,19 @@ import {
   validateCreateBook,
   validateObjectId,
   validateReplaceBook,
+  validateBookSearch,
   validateUpdateBook,
 } from '@/middleware/validate.js'
 import { Book } from '@/models/Book.js'
 import { ReadingStatus, type ReadingStatusValue } from '@/models/ReadingStatus.js'
 import type { AuthRequest } from '@/types/index.ts'
-import { markBookEdit, PANEL_TRACKED, recordBookEdit } from '@/utils/bookEdit.js'
+import { isbnSourceOf, markBookEdit, PANEL_TRACKED, recordBookEdit } from '@/utils/bookEdit.js'
 import { applyBookPerson, creditablePeople } from '@/utils/bookPerson.js'
 import {
+  confirmedIsbn,
+  differs,
   fetchEnrichmentPayload,
+  searchCandidates,
   getCoverSourceFromEnrichment,
   mainAuthorName,
 } from '@/utils/enrichment.js'
@@ -88,6 +92,33 @@ router.get(
   },
 )
 
+// ── POST /books/enrich/search ─────────────────────────────────────
+// Saves nothing: the form saves what the person picks.
+router.post(
+  '/enrich/search',
+  authRateLimit,
+  authenticate,
+  enrichmentRateLimit,
+  authorize('books', ['create', 'update']),
+  validateBookSearch,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { title, author, isbn } = req.body as { title: string; author: string; isbn?: string }
+      const found = await searchCandidates(title.trim(), author.trim(), isbn?.trim() || undefined)
+      if (found.failed) {
+        res.status(503).json({
+          error: 'A busca de capa e dados não respondeu. Tente de novo em alguns minutos.',
+        })
+        return
+      }
+      res.json({ source: found.source, candidates: found.candidates })
+    } catch (err) {
+      console.error('[POST /books/enrich/search]', err)
+      handleDataError(res, err, 'Não foi possível buscar agora. Tente de novo.')
+    }
+  },
+)
+
 // ── GET /books/:id — público ──────────────────────────────────────
 router.get('/:id', validateObjectId('id'), async (req: AuthRequest, res: Response) => {
   try {
@@ -139,6 +170,7 @@ router.post(
     try {
       const user = req.user!
       const payload = normalizeBookInput(req.body)
+      payload.isbn_source = payload.isbn ? isbnSourceOf(payload) : undefined
       await applyBookPerson(payload, user)
       const book = await Book.create({ ...payload, added_by: user._id, edit_history: [] })
 
@@ -242,7 +274,7 @@ router.post(
         return
       }
 
-      const enrichment = await fetchEnrichmentPayload(book.titulo, authorName, book.isbn)
+      const enrichment = await fetchEnrichmentPayload(book.titulo, authorName, confirmedIsbn(book))
       if (!enrichment?.data) {
         res.status(404).json({ error: 'Não achamos capa nem dados para este livro.' })
         return
@@ -321,7 +353,7 @@ router.post(
         return
       }
 
-      const enrichment = await fetchEnrichmentPayload(book.titulo, authorName, book.isbn)
+      const enrichment = await fetchEnrichmentPayload(book.titulo, authorName, confirmedIsbn(book))
       if (!enrichment?.data) {
         res.status(404).json({ error: 'Não achamos capa nem dados para este livro.' })
         return
@@ -342,6 +374,9 @@ router.post(
       }
 
       const normalizedPayload = normalizeBookInput(payload)
+      // A number the search brought is not confirmed; the same number a person typed stays theirs.
+      if (normalizedPayload.isbn && differs(normalizedPayload.isbn, book.isbn))
+        book.isbn_source = 'search'
       Object.assign(book, normalizedPayload)
       book.enriched_at = new Date()
 

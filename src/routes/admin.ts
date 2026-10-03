@@ -10,6 +10,7 @@ import { EnrichmentRun } from '@/models/EnrichmentRun.js'
 import { User } from '@/models/User.js'
 import type { AuthRequest } from '@/types/index.ts'
 import {
+  confirmedIsbn,
   fetchEnrichmentPayload,
   getCoverSourceFromEnrichment,
   mainAuthorName,
@@ -43,7 +44,7 @@ router.post(
 
       const books = await Book.find(filter)
         .populate<{ authors: { nome: string }[] }>('authors', 'nome')
-        .select('titulo authors isbn cover_url enriched_at manually_edited_at')
+        .select('titulo authors isbn isbn_source cover_url enriched_at manually_edited_at')
         .lean()
 
       if (!books.length) {
@@ -113,7 +114,11 @@ router.post(
             continue
           }
 
-          const enrichment = await fetchEnrichmentPayload(book.titulo, authorName, book.isbn)
+          const enrichment = await fetchEnrichmentPayload(
+            book.titulo,
+            authorName,
+            confirmedIsbn(book),
+          )
 
           if (!enrichment?.data) {
             skipped++
@@ -133,6 +138,9 @@ router.post(
           if (enrichment.data.cover_url) {
             updatePayload.cover_source = getCoverSourceFromEnrichment(enrichment.source)
           }
+          // A number the search brought is not confirmed; the same number a person typed stays theirs.
+          if (enrichment.data.isbn && enrichment.data.isbn !== book.isbn)
+            updatePayload.isbn_source = 'search'
           await Book.updateOne({ _id: book._id }, { $set: updatePayload })
 
           enriched++

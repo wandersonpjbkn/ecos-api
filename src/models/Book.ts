@@ -15,6 +15,8 @@ export interface IBook {
 
   // Enriquecimento (Google Books / Open Library fallback)
   isbn?: string
+  // Who gave the ISBN: a person, or a search (maybe another edition); absent is unknown, not confirmed.
+  isbn_source?: 'person' | 'search'
   cover_url?: string
   cover_source?: 'manual' | 'google' | 'openlibrary'
   synopsis?: string
@@ -55,6 +57,7 @@ const BookSchema = new Schema<IBook>(
     added_by: { type: Schema.Types.ObjectId, ref: 'User', required: true },
 
     isbn: { type: String },
+    isbn_source: { type: String, enum: ['person', 'search'] },
     cover_url: { type: String },
     cover_source: { type: String, enum: ['manual', 'google', 'openlibrary'] },
     synopsis: { type: String },

@@ -9,6 +9,8 @@
  *  - Enviamos User-Agent identificável em todas as requests.
  */
 
+import type { BookCandidate, CandidateSearch } from '@/utils/bookCandidate.js'
+
 type OpenLibraryStrategy = 'openlibrary_isbn' | 'openlibrary_title_author'
 
 export interface OpenLibraryResult {
@@ -22,6 +24,10 @@ export interface OpenLibraryResult {
 }
 
 interface OpenLibraryDoc {
+  key?: string
+  title?: string
+  author_name?: string[]
+  language?: string[]
   cover_i?: number
   isbn?: string[]
   first_sentence?: string | { value?: string }[]
@@ -36,20 +42,24 @@ interface OpenLibrarySearchResponse {
 }
 
 const API_BASE = 'https://openlibrary.org/search.json'
+// Asked for by name: the default answer has no ISBN, publisher, first sentence or page count.
+const FIELDS =
+  'key,title,author_name,language,cover_i,isbn,first_sentence,number_of_pages_median,first_publish_year,publisher'
 const COVER_BASE = 'https://covers.openlibrary.org/b'
 const OPEN_LIBRARY_USER_AGENT = `${process.env.OPEN_LIBRARY_AGENT_LIB} (${process.env.OPEN_LIBRARY_AGENT_USER})`
 
-const fetchDoc = async (url: string): Promise<OpenLibraryDoc | null> => {
+// A refused or failed request throws: the caller tells "nothing found" apart from "the search did not answer".
+const fetchDocs = async (url: string): Promise<OpenLibraryDoc[]> => {
   const res = await fetch(url, {
     headers: {
       'User-Agent': OPEN_LIBRARY_USER_AGENT,
     },
   })
 
-  if (!res.ok) return null
+  if (!res.ok) throw new Error(`Open Library ${res.status}`)
 
   const data = (await res.json()) as OpenLibrarySearchResponse
-  return data.numFound && data.docs?.length ? (data.docs[0] ?? null) : null
+  return data.numFound && data.docs?.length ? data.docs : []
 }
 
 const toSynopsis = (firstSentence?: OpenLibraryDoc['first_sentence']): string | undefined => {
@@ -66,20 +76,64 @@ const coverUrlOf = (isbn: string | undefined, coverId: number | undefined): stri
   return undefined
 }
 
-const extractResult = (doc: OpenLibraryDoc, strategy: OpenLibraryStrategy): OpenLibraryResult => {
-  const isbn = doc.isbn?.[0]
+// A result is a work, not an edition: with several, any one ISBN or language would be some edition's.
+const onlyOne = (values?: string[]) => (values?.length === 1 ? values[0] : undefined)
 
-  const cover_url = coverUrlOf(isbn, doc.cover_i)
+const toCandidate = (doc: OpenLibraryDoc): BookCandidate => {
+  const isbn = onlyOne(doc.isbn)
 
   return {
-    cover_url,
+    volume_id: doc.key ?? `openlibrary:${isbn ?? doc.title ?? ''}`,
+    title: doc.title,
+    authors: doc.author_name ?? [],
+    cover_url: coverUrlOf(isbn, doc.cover_i),
     synopsis: toSynopsis(doc.first_sentence),
     publisher: doc.publisher?.[0],
     isbn,
     page_count: doc.number_of_pages_median,
     published_year: doc.first_publish_year,
-    strategy,
+    language: onlyOne(doc.language),
   }
+}
+
+/** Up to `limit` works from the first strategy that finds any; `failed` when none answered. */
+export const searchOpenLibrary = async (
+  title: string,
+  author: string,
+  isbn: string | undefined,
+  limit: number,
+): Promise<CandidateSearch<OpenLibraryStrategy>> => {
+  const strategies: Array<[OpenLibraryStrategy, string]> = [
+    ...(isbn
+      ? [
+          [
+            'openlibrary_isbn',
+            `${API_BASE}?isbn=${encodeURIComponent(isbn.replace(/[-\s]/g, ''))}&limit=${limit}&fields=${FIELDS}`,
+          ] as [OpenLibraryStrategy, string],
+        ]
+      : []),
+    [
+      'openlibrary_title_author',
+      `${API_BASE}?title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&limit=${limit}&fields=${FIELDS}`,
+    ],
+  ]
+
+  let answered = false
+  for (const [strategy, url] of strategies) {
+    try {
+      const docs = await fetchDocs(url)
+      answered = true
+      if (docs.length) {
+        console.log(`[openLibrary] ✅ ${strategy} match: "${title}"`)
+        return { strategy, candidates: docs.map(toCandidate), failed: false }
+      }
+    } catch (err) {
+      console.warn(`[openLibrary] Falha na busca (${strategy}) "${title}":`, err)
+    }
+  }
+
+  console.log(`[openLibrary] ⏭️  Sem resultado para "${title}" — ${author}`)
+  return { strategy: null, candidates: [], failed: !answered }
 }
 
 export const fetchOpenLibrary = async (
@@ -87,31 +141,9 @@ export const fetchOpenLibrary = async (
   author: string,
   isbn?: string,
 ): Promise<OpenLibraryResult | null> => {
-  if (isbn) {
-    const cleanIsbn = isbn.replace(/[-\s]/g, '')
-
-    try {
-      const doc = await fetchDoc(`${API_BASE}?isbn=${encodeURIComponent(cleanIsbn)}&limit=1`)
-      if (doc) {
-        console.log(`[openLibrary] ✅ ISBN match: "${title}"`)
-        return extractResult(doc, 'openlibrary_isbn')
-      }
-    } catch (err) {
-      console.warn(`[openLibrary] Falha na busca por ISBN "${isbn}":`, err)
-    }
-  }
-
-  try {
-    const query = `${API_BASE}?title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&limit=1`
-    const doc = await fetchDoc(query)
-    if (doc) {
-      console.log(`[openLibrary] ✅ título+autor match: "${title}"`)
-      return extractResult(doc, 'openlibrary_title_author')
-    }
-  } catch (err) {
-    console.warn(`[openLibrary] Falha na busca por título+autor "${title}":`, err)
-  }
-
-  console.log(`[openLibrary] ⏭️  Sem resultado para "${title}" — ${author}`)
-  return null
+  const { strategy, candidates } = await searchOpenLibrary(title, author, isbn, 1)
+  const first = candidates[0]
+  if (!first || !strategy) return null
+  const { cover_url, synopsis, publisher, page_count, published_year } = first
+  return { cover_url, synopsis, publisher, isbn: first.isbn, page_count, published_year, strategy }
 }

@@ -1,14 +1,6 @@
-/**
- * Utilitário de enriquecimento via Google Books API.
- *
- * Estratégia de busca (ordem de prioridade):
- *  1. ISBN — se disponível no documento, busca por isbn:XXXXXX (resultado mais preciso)
- *  2. Título + autor — fallback quando não há ISBN
- *  3. Título + autor sem restrição de idioma — último fallback
- *
- * A chave de API é lida de process.env.GOOGLE_BOOKS_API_KEY.
- * Se não definida, funciona sem chave (limite ~1.000 req/dia).
- */
+// Without GOOGLE_BOOKS_API_KEY the requests share an anonymous quota that is often exhausted (429).
+
+import type { BookCandidate, CandidateSearch } from '@/utils/bookCandidate.js'
 
 type GoogleBooksStrategy = 'isbn' | 'title_author_pt' | 'title_author'
 
@@ -26,12 +18,14 @@ interface GoogleBooksVolume {
   id: string
   volumeInfo: {
     title?: string
+    authors?: string[]
     description?: string
     imageLinks?: {
       thumbnail?: string
       smallThumbnail?: string
     }
     industryIdentifiers?: Array<{ type: string; identifier: string }>
+    language?: string
     pageCount?: number
     publishedDate?: string
     publisher?: string
@@ -45,80 +39,19 @@ interface GoogleBooksResponse {
 
 const API_BASE = 'https://www.googleapis.com/books/v1/volumes'
 
-const buildUrl = (query: string, keyParam: string): string =>
-  `${API_BASE}?q=${query}&maxResults=1${keyParam}`
+const buildUrl = (query: string, keyParam: string, limit: number): string =>
+  `${API_BASE}?q=${query}&maxResults=${limit}${keyParam}`
 
-const fetchVolume = async (url: string): Promise<GoogleBooksVolume | null> => {
+// A refused or failed request throws: the caller tells "nothing found" apart from "the search did not answer".
+const fetchVolumes = async (url: string): Promise<GoogleBooksVolume[]> => {
   const res = await fetch(url)
-  if (!res.ok) return null
+  if (!res.ok) throw new Error(`Google Books ${res.status}`)
 
   const data = (await res.json()) as GoogleBooksResponse
-  return data.totalItems && data.items?.length ? (data.items[0] ?? null) : null
+  return data.totalItems && data.items?.length ? data.items : []
 }
 
-/**
- * Busca um livro na Google Books API.
- * Aceita ISBN opcional — quando presente, tem prioridade sobre título+autor.
- * Retorna null se não encontrar resultado válido.
- */
-export const fetchGoogleBooks = async (
-  title: string,
-  author: string,
-  isbn?: string,
-): Promise<GoogleBooksResult | null> => {
-  const apiKey = process.env.GOOGLE_BOOKS_API_KEY
-  const keyParam = apiKey ? `&key=${apiKey}` : ''
-
-  // ── Estratégia 1: ISBN ─────────────────────────────────────────
-  if (isbn) {
-    const cleanIsbn = isbn.replace(/[-\s]/g, '')
-    const url = buildUrl(`isbn:${cleanIsbn}`, keyParam)
-
-    try {
-      const volume = await fetchVolume(url)
-      if (volume) {
-        console.log(`[googleBooks] ✅ ISBN match: "${title}"`)
-        return extractResult(volume, 'isbn')
-      }
-    } catch (err) {
-      console.warn(`[googleBooks] Falha na busca por ISBN "${isbn}":`, err)
-    }
-  }
-
-  // ── Estratégia 2: título + autor (com restrição de idioma pt) ──
-  const titleAuthorQuery = encodeURIComponent(`intitle:${title} inauthor:${author}`)
-
-  try {
-    const url = buildUrl(`${titleAuthorQuery}&langRestrict=pt`, keyParam)
-    const volume = await fetchVolume(url)
-    if (volume) {
-      console.log(`[googleBooks] ✅ título+autor (pt) match: "${title}"`)
-      return extractResult(volume, 'title_author_pt')
-    }
-  } catch (err) {
-    console.warn(`[googleBooks] Falha na busca por título+autor (pt) "${title}":`, err)
-  }
-
-  // ── Estratégia 3: título + autor sem restrição de idioma ───────
-  try {
-    const url = buildUrl(titleAuthorQuery, keyParam)
-    const volume = await fetchVolume(url)
-    if (volume) {
-      console.log(`[googleBooks] ✅ título+autor (sem lang) match: "${title}"`)
-      return extractResult(volume, 'title_author')
-    }
-  } catch (err) {
-    console.warn(`[googleBooks] Falha na busca sem restrição "${title}":`, err)
-  }
-
-  console.log(`[googleBooks] ⏭️  Sem resultado para "${title}" — ${author}`)
-  return null
-}
-
-const extractResult = (
-  volume: GoogleBooksVolume,
-  strategy: GoogleBooksStrategy,
-): GoogleBooksResult => {
+const toCandidate = (volume: GoogleBooksVolume): BookCandidate => {
   const info = volume.volumeInfo
 
   // Prefere thumbnail sobre smallThumbnail e força HTTPS
@@ -128,19 +61,72 @@ const extractResult = (
   // Extrai ISBN-13 preferencialmente, senão ISBN-10
   const isbn13 = info.industryIdentifiers?.find((i) => i.type === 'ISBN_13')?.identifier
   const isbn10 = info.industryIdentifiers?.find((i) => i.type === 'ISBN_10')?.identifier
-  const isbn = isbn13 ?? isbn10 ?? undefined
 
   const published_year = info.publishedDate
     ? parseInt(info.publishedDate.slice(0, 4), 10) || undefined
     : undefined
 
   return {
+    volume_id: volume.id,
+    title: info.title,
+    authors: info.authors ?? [],
     cover_url,
     synopsis: info.description ?? undefined,
     publisher: info.publisher ?? undefined,
-    isbn,
+    isbn: isbn13 ?? isbn10 ?? undefined,
     page_count: info.pageCount ?? undefined,
     published_year,
-    strategy,
+    language: info.language,
   }
+}
+
+/** Up to `limit` books from the first strategy that finds any, in Google's order (its guidelines forbid reordering). */
+export const searchGoogleBooks = async (
+  title: string,
+  author: string,
+  isbn: string | undefined,
+  limit: number,
+): Promise<CandidateSearch<GoogleBooksStrategy>> => {
+  const apiKey = process.env.GOOGLE_BOOKS_API_KEY
+  const keyParam = apiKey ? `&key=${apiKey}` : ''
+  // Plain text: Google returns no results for intitle:/inauthor: queries.
+  const titleAuthorQuery = encodeURIComponent(`${title} ${author}`)
+
+  const strategies: Array<[GoogleBooksStrategy, string]> = [
+    ...(isbn
+      ? [['isbn', `isbn:${isbn.replace(/[-\s]/g, '')}`] as [GoogleBooksStrategy, string]]
+      : []),
+    ['title_author_pt', `${titleAuthorQuery}&langRestrict=pt`],
+    ['title_author', titleAuthorQuery],
+  ]
+
+  let answered = false
+  for (const [strategy, query] of strategies) {
+    try {
+      const volumes = await fetchVolumes(buildUrl(query, keyParam, limit))
+      answered = true
+      if (volumes.length) {
+        console.log(`[googleBooks] ✅ ${strategy} match: "${title}"`)
+        return { strategy, candidates: volumes.map(toCandidate), failed: false }
+      }
+    } catch (err) {
+      console.warn(`[googleBooks] Falha na busca (${strategy}) "${title}":`, err)
+    }
+  }
+
+  console.log(`[googleBooks] ⏭️  Sem resultado para "${title}" — ${author}`)
+  return { strategy: null, candidates: [], failed: !answered }
+}
+
+/** The first book of the search above, or null. */
+export const fetchGoogleBooks = async (
+  title: string,
+  author: string,
+  isbn?: string,
+): Promise<GoogleBooksResult | null> => {
+  const { strategy, candidates } = await searchGoogleBooks(title, author, isbn, 1)
+  const first = candidates[0]
+  if (!first || !strategy) return null
+  const { cover_url, synopsis, publisher, page_count, published_year } = first
+  return { cover_url, synopsis, publisher, isbn: first.isbn, page_count, published_year, strategy }
 }

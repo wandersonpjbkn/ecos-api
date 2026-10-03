@@ -22,6 +22,7 @@ const FIELD = {
   porque: 'o comentário',
   synopsis: 'a sinopse',
   isbn: 'o ISBN',
+  isbn_source: 'a origem do ISBN',
   cover_url: 'a capa',
   cover_source: 'a origem da capa',
   publisher: 'a editora',
@@ -45,9 +46,9 @@ const OPTIONAL_TEXT: BookField[] = ['porque', 'synopsis', 'isbn', 'cover_url', '
 const POSITIVE_INT: BookField[] = ['page_count', 'published_year']
 
 const ADMIN_FIELDS = [...Object.keys(FIELD), ...Object.keys(ALIAS)]
-// The owner edits every field of the book except who mentioned it and where the cover came from.
+// The owner edits every field of the book except who mentioned it and where the cover or the ISBN came from.
 const MEMBER_FIELDS = Object.keys(FIELD).filter(
-  (field) => !['quem_nome', 'quem_user_id', 'cover_source'].includes(field),
+  (field) => !['quem_nome', 'quem_user_id', 'cover_source', 'isbn_source'].includes(field),
 )
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
@@ -110,6 +111,10 @@ const bookFieldsError = (
   const source = value('cover_source')
   if (source !== undefined && !['manual', 'google', 'openlibrary'].includes(source as string)) {
     return 'A origem da capa não é válida.'
+  }
+  const isbnSource = value('isbn_source')
+  if (isbnSource !== undefined && !['person', 'search'].includes(isbnSource as string)) {
+    return 'A origem do ISBN não é válida.'
   }
   return null
 }
@@ -174,6 +179,29 @@ export const validateCreateNamed = (req: AuthRequest, res: Response, next: NextF
   }
   next()
 }
+// ── Busca de capa e dados ─────────────────────────────────────────
+
+export const validateBookSearch = (req: AuthRequest, res: Response, next: NextFunction): void => {
+  const { title, author, isbn } = req.body ?? {}
+  if (!isString(title) || !isString(author)) {
+    res.status(400).json({ error: 'Preencha o título e o autor para buscar.' })
+    return
+  }
+  if (
+    title.length > 200 ||
+    author.length > 200 ||
+    (isbn !== undefined && !isOptionalString(isbn))
+  ) {
+    res.status(400).json({ error: 'Não foi possível buscar. Confira o título, o autor e o ISBN.' })
+    return
+  }
+  if (typeof isbn === 'string' && isbn.trim() && !/^[\dXx\s-]{10,20}$/.test(isbn.trim())) {
+    res.status(400).json({ error: 'O ISBN tem 10 ou 13 números.' })
+    return
+  }
+  next()
+}
+
 // ── Params ────────────────────────────────────────────────────────
 
 export const validateObjectId =
