@@ -22,7 +22,7 @@ jobs:
       - run: yarn install --frozen-lockfile
       - run: yarn ts
       - run: yarn eslint src tests eslint
-      - run: yarn prettier --check src/ tests/ eslint/
+      - run: yarn prettier --check src/ tests/ eslint/ scripts/
       - run: yarn test
       # Fails only on high and critical: yarn 1 exits non-zero for any severity.
       - run: yarn audit:check
