@@ -13,16 +13,6 @@ import type { BookCandidate, CandidateSearch } from '@/utils/bookCandidate.js'
 
 type OpenLibraryStrategy = 'openlibrary_isbn' | 'openlibrary_title_author'
 
-export interface OpenLibraryResult {
-  cover_url?: string
-  synopsis?: string
-  publisher?: string
-  isbn?: string
-  page_count?: number
-  published_year?: number
-  strategy: OpenLibraryStrategy
-}
-
 interface OpenLibraryDoc {
   key?: string
   title?: string
@@ -134,16 +124,4 @@ export const searchOpenLibrary = async (
 
   console.log(`[openLibrary] ⏭️  Sem resultado para "${title}" — ${author}`)
   return { strategy: null, candidates: [], failed: !answered }
-}
-
-export const fetchOpenLibrary = async (
-  title: string,
-  author: string,
-  isbn?: string,
-): Promise<OpenLibraryResult | null> => {
-  const { strategy, candidates } = await searchOpenLibrary(title, author, isbn, 1)
-  const first = candidates[0]
-  if (!first || !strategy) return null
-  const { cover_url, synopsis, publisher, page_count, published_year } = first
-  return { cover_url, synopsis, publisher, isbn: first.isbn, page_count, published_year, strategy }
 }

@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 
 import { Book } from '@/models/Book.js'
 import { markBookEdit, PANEL_TRACKED, recordBookEdit } from '@/utils/bookEdit.js'
-import { confirmedIsbn } from '@/utils/enrichment.js'
 
 const stored = (fields: Record<string, unknown> = {}) =>
   new Book({
@@ -44,12 +43,6 @@ describe('where an ISBN came from', () => {
     const book = stored({ isbn: '9788535914849', isbn_source: 'search' })
 
     expect(edit(book, { isbn: null }).isbn_source).toBeUndefined()
-  })
-
-  it('keys a search only on a confirmed ISBN', () => {
-    expect(confirmedIsbn({ isbn: '9788535914849', isbn_source: 'person' })).toBe('9788535914849')
-    expect(confirmedIsbn({ isbn: '9788535914849', isbn_source: 'search' })).toBeUndefined()
-    expect(confirmedIsbn({ isbn: '9788535914849' })).toBeUndefined()
   })
 })
 

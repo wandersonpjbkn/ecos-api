@@ -4,16 +4,6 @@ import type { BookCandidate, CandidateSearch } from '@/utils/bookCandidate.js'
 
 type GoogleBooksStrategy = 'isbn' | 'title_author_pt' | 'title_author'
 
-interface GoogleBooksResult {
-  cover_url?: string
-  synopsis?: string
-  publisher?: string
-  isbn?: string
-  page_count?: number
-  published_year?: number
-  strategy: GoogleBooksStrategy
-}
-
 interface GoogleBooksVolume {
   id: string
   volumeInfo: {
@@ -116,17 +106,4 @@ export const searchGoogleBooks = async (
 
   console.log(`[googleBooks] ⏭️  Sem resultado para "${title}" — ${author}`)
   return { strategy: null, candidates: [], failed: !answered }
-}
-
-/** The first book of the search above, or null. */
-export const fetchGoogleBooks = async (
-  title: string,
-  author: string,
-  isbn?: string,
-): Promise<GoogleBooksResult | null> => {
-  const { strategy, candidates } = await searchGoogleBooks(title, author, isbn, 1)
-  const first = candidates[0]
-  if (!first || !strategy) return null
-  const { cover_url, synopsis, publisher, page_count, published_year } = first
-  return { cover_url, synopsis, publisher, isbn: first.isbn, page_count, published_year, strategy }
 }

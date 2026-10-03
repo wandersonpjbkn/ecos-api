@@ -1,7 +1,7 @@
 import type { HydratedDocument, Types } from 'mongoose'
 
 import type { IBook } from '@/models/Book.js'
-import { changesCover, differs, hasEnrichmentEdit } from '@/utils/enrichment.js'
+import { changesCover, differs } from '@/utils/enrichment.js'
 
 type Tracked = (typeof PANEL_TRACKED)[number] | (typeof OWNER_TRACKED)[number]
 
@@ -58,27 +58,18 @@ export const recordBookEdit = (
   }
   const stored = book.toObject()
   return {
-    now,
-    enrichmentEdited: hasEnrichmentEdit(payload, stored),
     coverChanged: changesCover(payload, stored),
     isbnChanged: payload.isbn !== undefined && differs(payload.isbn, stored.isbn),
     isbnSource: stored.isbn_source,
   }
 }
 
-/** A hand-made correction is not overwritten by the automatic search; an emptied cover has no source to credit. */
+/** Where the cover and the ISBN came from; an emptied cover has no source to credit. */
 export const markBookEdit = (
   book: HydratedDocument<IBook>,
   payload: Record<string, unknown>,
-  {
-    now,
-    enrichmentEdited,
-    coverChanged,
-    isbnChanged,
-    isbnSource,
-  }: ReturnType<typeof recordBookEdit>,
+  { coverChanged, isbnChanged, isbnSource }: ReturnType<typeof recordBookEdit>,
 ) => {
-  if (enrichmentEdited) book.manually_edited_at = now
   // The form says when the cover or the ISBN came from its search; anything else was typed by a person.
   if (coverChanged)
     book.cover_source = payload.cover_url ? (sourceOf(payload.cover_source) ?? 'manual') : undefined

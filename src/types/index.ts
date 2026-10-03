@@ -4,15 +4,7 @@ import type { Types } from 'mongoose'
 export type Role = 'admin' | 'editor' | 'viewer'
 export type AccountStatus = 'active' | 'suspended'
 export type Resource =
-  | 'books'
-  | 'users'
-  | 'autores'
-  | 'midias'
-  | 'categorias'
-  | 'subgeneros'
-  | 'permissions'
-  | 'claim'
-  | 'enrichment'
+  'books' | 'users' | 'autores' | 'midias' | 'categorias' | 'subgeneros' | 'permissions' | 'claim'
 export type Action = 'create' | 'read' | 'update' | 'delete'
 
 export interface SupabaseJwtPayload {

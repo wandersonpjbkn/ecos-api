@@ -4,7 +4,6 @@ import request from 'supertest'
 import { describe, expect, it } from 'vitest'
 
 import { validateCreateBook, validateMemberUpdateBook } from '@/middleware/validate.js'
-import { mainAuthorName } from '@/utils/enrichment.js'
 
 const id = () => String(new Types.ObjectId())
 
@@ -66,18 +65,5 @@ describe('authors of a book', () => {
       .send({ ...book([id()]), autor: id() })
 
     expect(res.status).toBe(400)
-  })
-})
-
-describe('mainAuthorName', () => {
-  it('searches by the first author, the one a list shows', () => {
-    expect(mainAuthorName([{ nome: 'Neil Gaiman' }, { nome: 'Terry Pratchett' }])).toBe(
-      'Neil Gaiman',
-    )
-  })
-
-  it('has no name when the book has no author left', () => {
-    expect(mainAuthorName([])).toBeNull()
-    expect(mainAuthorName(undefined)).toBeNull()
   })
 })

@@ -108,7 +108,6 @@ export default defineConfig([
     files: [
       'src/middleware/validate.ts',
       'src/migrations/migrate-csv.ts',
-      'src/routes/admin.ts',
       'src/utils/bookPerson.ts',
     ],
     rules: {

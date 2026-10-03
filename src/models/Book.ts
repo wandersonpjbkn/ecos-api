@@ -23,8 +23,6 @@ export interface IBook {
   publisher?: string
   page_count?: number
   published_year?: number
-  enriched_at?: Date
-  manually_edited_at?: Date | null
 
   edit_history: EditHistoryEntry[]
 }
@@ -64,8 +62,6 @@ const BookSchema = new Schema<IBook>(
     publisher: { type: String },
     page_count: { type: Number },
     published_year: { type: Number },
-    enriched_at: { type: Date },
-    manually_edited_at: { type: Date, default: null },
 
     edit_history: { type: [EditHistorySchema], default: [] },
   },

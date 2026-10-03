@@ -9,7 +9,6 @@ export const RESOURCES = [
   'subgeneros',
   'permissions',
   'claim',
-  'enrichment',
 ] as const
 
 export const ACTIONS = ['create', 'read', 'update', 'delete'] as const
@@ -25,7 +24,6 @@ export const CONFIGURABLE: Record<(typeof RESOURCES)[number], (typeof ACTIONS)[n
   permissions: [],
   // create: a new placeholder name ("Outro nome"); update: link one's own account to a name.
   claim: ['create', 'update'],
-  enrichment: ['update'],
 }
 
 /** Permissões padrão aplicadas ao seed inicial do banco */
@@ -39,7 +37,6 @@ export const DEFAULT_PERMISSIONS = [
   { role: 'admin', resource: 'subgeneros', actions: ['create', 'read', 'update', 'delete'] },
   { role: 'admin', resource: 'permissions', actions: ['create', 'read', 'update', 'delete'] },
   { role: 'admin', resource: 'claim', actions: ['create', 'update'] },
-  { role: 'admin', resource: 'enrichment', actions: ['update'] },
 
   // ── editor — cria e lê entidades de catálogo; lê usuários ────
   { role: 'editor', resource: 'books', actions: ['create', 'read', 'update'] },
@@ -50,7 +47,6 @@ export const DEFAULT_PERMISSIONS = [
   { role: 'editor', resource: 'subgeneros', actions: ['create', 'read'] },
   { role: 'editor', resource: 'permissions', actions: [] },
   { role: 'editor', resource: 'claim', actions: ['update'] },
-  { role: 'editor', resource: 'enrichment', actions: ['update'] },
 
   // ── viewer — somente leitura ──────────────────────────────────
   { role: 'viewer', resource: 'books', actions: ['read'] },
@@ -61,5 +57,4 @@ export const DEFAULT_PERMISSIONS = [
   { role: 'viewer', resource: 'subgeneros', actions: ['read'] },
   { role: 'viewer', resource: 'permissions', actions: [] },
   { role: 'viewer', resource: 'claim', actions: [] },
-  { role: 'viewer', resource: 'enrichment', actions: [] },
 ] as const
