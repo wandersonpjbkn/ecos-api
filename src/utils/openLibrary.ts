@@ -103,7 +103,7 @@ export const searchOpenLibrary = async (
         return { strategy, candidates: docs.map(toCandidate), failed: false }
       }
     } catch (err) {
-      console.warn(`[openLibrary] Falha na busca (${strategy}) "${title}":`, err)
+      console.warn('[openLibrary] Falha na busca (%s) "%s":', strategy, title, err)
     }
   }
 
