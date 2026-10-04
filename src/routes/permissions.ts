@@ -14,7 +14,6 @@ const router = Router()
 router.use(authenticate, adminOnly)
 
 // ── GET /permissions ──────────────────────────────────────────────
-// The matrix per level, and which actions of each resource it really controls (the screen shows only those).
 router.get('/', async (_req, res: Response) => {
   try {
     const permissions = await Permission.find().sort({ role: 1, resource: 1 }).lean()
@@ -26,7 +25,6 @@ router.get('/', async (_req, res: Response) => {
 })
 
 // ── PUT /permissions/:role/:resource ──────────────────────────────
-// Substitui as actions de uma combinação role+resource
 router.put(
   '/:role/:resource',
   authRateLimit,
@@ -36,7 +34,6 @@ router.put(
       const { role, resource } = req.params
       const { actions } = req.body as { actions?: unknown }
 
-      // Validações
       if (!['admin', 'editor', 'viewer'].includes(role as string)) {
         res.status(400).json({ error: 'Não foi possível salvar a permissão. Tente de novo.' })
         return
@@ -57,12 +54,10 @@ router.put(
       const allowed = CONFIGURABLE[safeResource]
       const safeActions = [...new Set(actions.map((action) => String(action).trim() as Action))]
 
-      // A box that changes nothing is refused, so the matrix never claims what the routes do not do.
       if (safeActions.some((action) => !allowed.includes(action))) {
         res.status(400).json({ error: 'Essa permissão não muda nada no clube.' })
         return
       }
-      // Creating, editing or removing what you cannot list is useless: a write brings read along.
       if (
         allowed.includes('read') &&
         safeActions.some((action) => action !== 'read') &&

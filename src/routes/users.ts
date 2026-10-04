@@ -17,9 +17,10 @@ import { Permission } from '@/models/Permission.js'
 import { User } from '@/models/User.js'
 import readingRoutes from '@/routes/reading.js'
 import type { AuthRequest } from '@/types/index.ts'
-import { markBookEdit, OWNER_TRACKED, recordBookEdit } from '@/utils/bookEdit.js'
+import { applyOwnerFields, markBookEdit, OWNER_TRACKED, recordBookEdit } from '@/utils/bookEdit.js'
 import { claimMatch, freePlaceholderNames } from '@/utils/bookPerson.js'
 import { handleDataError } from '@/utils/httpErrors.js'
+import { publicBook } from '@/utils/publicBook.js'
 import {
   deleteSupabaseAccount,
   SupabaseAdminError,
@@ -45,7 +46,6 @@ router.use('/me/reading', readingRoutes)
 // ── GET /users ────────────────────────────────────────────────────
 router.get('/', authorize('users', 'read'), async (_req, res: Response) => {
   try {
-    // What the members list shows, nothing more: another person's preferences and legacy fields stay out.
     const users = await User.find()
       .select('name email role status created_at last_seen_at')
       .sort({ created_at: -1 })
@@ -58,7 +58,6 @@ router.get('/', authorize('users', 'read'), async (_req, res: Response) => {
 })
 
 // ── GET /users/me ─────────────────────────────────────────────────
-// The matrix of the person's own level, so the front can hide what the server would refuse (it never decides).
 router.get('/me', async (req: AuthRequest, res: Response) => {
   try {
     const rows = await Permission.find({ role: req.user!.role })
@@ -109,99 +108,109 @@ router.get('/me/claim', async (req: AuthRequest, res: Response) => {
 })
 
 // ── POST /users/me/claim ─────────────────────────────────────────
-router.post('/me/claim', authRateLimit, writeRateLimit, authorize('claim', 'update'), async (req: AuthRequest, res: Response) => {
-  try {
-    const rawName = req.body?.quem_nome
-    if (typeof rawName !== 'string' || rawName.trim().length === 0) {
-      res.status(400).json({ error: 'Escolha o seu nome.' })
-      return
-    }
+router.post(
+  '/me/claim',
+  authRateLimit,
+  writeRateLimit,
+  authorize('claim', 'update'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const rawName = req.body?.quem_nome
+      if (typeof rawName !== 'string' || rawName.trim().length === 0) {
+        res.status(400).json({ error: 'Escolha o seu nome.' })
+        return
+      }
 
-    const claimName = rawName.trim()
-    if (claimName.length > 60) {
-      res.status(400).json({ error: 'O nome pode ter até 60 letras.' })
-      return
-    }
+      const claimName = rawName.trim()
+      if (claimName.length > 60) {
+        res.status(400).json({ error: 'O nome pode ter até 60 letras.' })
+        return
+      }
 
-    const user = req.user!
-    const currentClaims = await getCurrentClaims(user._id.toString())
+      const user = req.user!
+      const currentClaims = await getCurrentClaims(user._id.toString())
 
-    if (currentClaims.length > 1) {
-      res.status(409).json({
-        error: 'Sua conta está vinculada a mais de um nome. Desfaça o vínculo antes de continuar.',
-      })
-      return
-    }
+      if (currentClaims.length > 1) {
+        res.status(409).json({
+          error:
+            'Sua conta está vinculada a mais de um nome. Desfaça o vínculo antes de continuar.',
+        })
+        return
+      }
 
-    if (currentClaims.length === 1 && currentClaims[0].toLowerCase() !== claimName.toLowerCase()) {
-      res.status(409).json({
-        error: `Sua conta já está vinculada a "${currentClaims[0]}". Desfaça esse vínculo antes de escolher outro nome.`,
-      })
-      return
-    }
+      if (
+        currentClaims.length === 1 &&
+        currentClaims[0].toLowerCase() !== claimName.toLowerCase()
+      ) {
+        res.status(409).json({
+          error: `Sua conta já está vinculada a "${currentClaims[0]}". Desfaça esse vínculo antes de escolher outro nome.`,
+        })
+        return
+      }
 
-    const alreadyClaimedByAnother = await Book.exists({
-      quem_nome: { $regex: `^${escapeRegExp(claimName)}$`, $options: 'i' },
-      quem_user_id: { $nin: [null, user._id] },
-    })
-
-    if (alreadyClaimedByAnother) {
-      res.status(409).json({ error: 'Este nome já está vinculado a outra conta.' })
-      return
-    }
-
-    const targetBooks = await Book.countDocuments({
-      quem_nome: { $regex: `^${escapeRegExp(claimName)}$`, $options: 'i' },
-    })
-
-    if (targetBooks === 0) {
-      res.status(404).json({ error: 'Não achamos livros com esse nome.' })
-      return
-    }
-
-    const result = await Book.updateMany(
-      {
+      const alreadyClaimedByAnother = await Book.exists({
         quem_nome: { $regex: `^${escapeRegExp(claimName)}$`, $options: 'i' },
-        quem_user_id: { $in: [null, user._id] },
-      },
-      { $set: { quem_user_id: user._id } },
-    )
+        quem_user_id: { $nin: [null, user._id] },
+      })
 
-    let nameUpdated = false
-    if (isAutoGeneratedName(user.name, user.email)) {
-      await User.updateOne({ _id: user._id }, { name: claimName })
-      nameUpdated = true
-      console.log(
-        `[POST /users/me/claim] Nome de "${user.name}" atualizado para "${claimName}" (auto-sync)`,
+      if (alreadyClaimedByAnother) {
+        res.status(409).json({ error: 'Este nome já está vinculado a outra conta.' })
+        return
+      }
+
+      const targetBooks = await Book.countDocuments({
+        quem_nome: { $regex: `^${escapeRegExp(claimName)}$`, $options: 'i' },
+      })
+
+      if (targetBooks === 0) {
+        res.status(404).json({ error: 'Não achamos livros com esse nome.' })
+        return
+      }
+
+      const result = await Book.updateMany(
+        {
+          quem_nome: { $regex: `^${escapeRegExp(claimName)}$`, $options: 'i' },
+          quem_user_id: { $in: [null, user._id] },
+        },
+        { $set: { quem_user_id: user._id } },
       )
+
+      let nameUpdated = false
+      if (isAutoGeneratedName(user.name, user.email)) {
+        await User.updateOne({ _id: user._id }, { name: claimName })
+        nameUpdated = true
+        console.log(
+          `[POST /users/me/claim] Nome de "${user.name}" atualizado para "${claimName}" (auto-sync)`,
+        )
+      }
+
+      await ClaimHistory.create({
+        action: 'claim',
+        user_id: user._id,
+        user_email: user.email,
+        claim_name: claimName,
+        affected_books: result.modifiedCount,
+        performed_at: new Date(),
+      })
+
+      console.log(
+        `[POST /users/me/claim] "${claimName}" vinculado por ${user.email}` +
+          ` — ${result.modifiedCount} livro(s) atualizado(s)`,
+      )
+
+      res.json({
+        message: 'Claim realizado com sucesso.',
+        claim_name: claimName,
+        matched_books: targetBooks,
+        updated_books: result.modifiedCount,
+        name_synced: nameUpdated,
+      })
+    } catch (err) {
+      console.error('[POST /users/me/claim]', err)
+      handleDataError(res, err, 'Não foi possível vincular o nome. Tente de novo.')
     }
-
-    await ClaimHistory.create({
-      action: 'claim',
-      user_id: user._id,
-      user_email: user.email,
-      claim_name: claimName,
-      affected_books: result.modifiedCount,
-      performed_at: new Date(),
-    })
-
-    console.log(
-      `[POST /users/me/claim] "${claimName}" vinculado por ${user.email}` +
-        ` — ${result.modifiedCount} livro(s) atualizado(s)`,
-    )
-
-    res.json({
-      message: 'Claim realizado com sucesso.',
-      claim_name: claimName,
-      matched_books: targetBooks,
-      updated_books: result.modifiedCount,
-      name_synced: nameUpdated,
-    })
-  } catch (err) {
-    console.error('[POST /users/me/claim]', err)
-    handleDataError(res, err, 'Não foi possível vincular o nome. Tente de novo.')
-  }
-})
+  },
+)
 
 // ── DELETE /users/me/claim ───────────────────────────────────────
 router.delete(
@@ -219,7 +228,6 @@ router.delete(
         return
       }
 
-      // Only the claimed placeholder's books go back to it; a book credited to the account itself stays credited.
       const result = await Book.updateMany(
         { quem_user_id: user._id, quem_nome: { $in: currentClaims } },
         { $unset: { quem_user_id: '' } },
@@ -270,25 +278,13 @@ router.patch(
       const user = req.user!
       const marks = recordBookEdit(book, req.body, user._id, OWNER_TRACKED)
 
-      if (req.body.titulo !== undefined) book.titulo = req.body.titulo
-      if (req.body.autor !== undefined) book.autor = req.body.autor
-      if (req.body.categoria !== undefined) book.categoria = req.body.categoria
-      if (req.body.midia !== undefined) book.midia = req.body.midia
-      if (req.body.subgeneros !== undefined) book.subgeneros = req.body.subgeneros
-      if (req.body.porque !== undefined) book.porque = req.body.porque
-      if (req.body.synopsis !== undefined) book.synopsis = req.body.synopsis
-      if (req.body.isbn !== undefined) book.isbn = req.body.isbn
-      if (req.body.cover_url !== undefined) book.cover_url = req.body.cover_url
-      if (req.body.google_books_id !== undefined) book.google_books_id = req.body.google_books_id
-      if (req.body.page_count !== undefined) book.page_count = req.body.page_count ?? undefined
-      if (req.body.published_year !== undefined)
-        book.published_year = req.body.published_year ?? undefined
+      applyOwnerFields(book, req.body)
       markBookEdit(book, req.body, marks)
 
       await book.save()
 
       console.log(`[PATCH /users/me/books/:id] "${book.titulo}" editado por ${user.email}`)
-      res.json(book)
+      res.json(publicBook(book.toObject()))
     } catch (err) {
       console.error('[PATCH /users/me/books/:id]', err)
       handleDataError(res, err, 'Não foi possível salvar o livro. Tente de novo.')
@@ -331,7 +327,6 @@ router.patch(
   },
 )
 
-// What the members list shows about a person (GET /users), also sent back after a change.
 const memberView = (user: InstanceType<typeof User>) => ({
   _id: user._id,
   name: user.name,
@@ -342,7 +337,6 @@ const memberView = (user: InstanceType<typeof User>) => ({
   last_seen_at: user.last_seen_at,
 })
 
-// Only an Administrador with access reaches these, never on their own account: one always keeps access.
 const isOwnAccount = (req: AuthRequest) => req.params.id === req.user!._id.toString()
 
 // ── PATCH /users/:id/status ───────────────────────────────────────
@@ -366,7 +360,6 @@ router.patch(
         return
       }
 
-      // Supabase first: if it fails, nothing changed here, and sending it again is safe.
       await setSupabaseSuspended(user.supabase_uid, req.body.status === 'suspended')
       user.status = req.body.status
       await user.save()
@@ -404,9 +397,7 @@ router.delete(
         return
       }
 
-      // Supabase first, and every step after it can run again: a failure halfway is fixed by removing again.
       await deleteSupabaseAccount(user.supabase_uid)
-      // The books stay. Credited straight to the account, they keep its name as a placeholder; a claimed name keeps its own.
       await Book.updateMany(
         { quem_user_id: user._id, quem_nome: { $in: [null, ''] } },
         { $set: { quem_nome: user.name } },
@@ -463,7 +454,6 @@ router.patch('/me', authRateLimit, writeRateLimit, async (req: AuthRequest, res:
         return
       }
 
-      // A renamed or removed format drops out instead of failing: the answer is the list kept, and the front adopts it.
       const known = new Set<string>(await Midia.distinct('nome'))
       update.hidden_midias = [...new Set<string>(hidden_midias)].filter((m) => known.has(m))
     }

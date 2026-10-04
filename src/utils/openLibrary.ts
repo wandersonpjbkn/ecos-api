@@ -1,35 +1,17 @@
-/**
- * Utilitário de enriquecimento via Open Library API.
- *
- * Estratégia de busca (ordem de prioridade):
- *  1. ISBN
- *  2. Título + autor
- *
- * Guidelines Open Library:
- *  - Enviamos User-Agent identificável em todas as requests.
- */
+import type { BookCandidate, CandidateSearch } from '@/utils/bookCandidate.js'
 
 type OpenLibraryStrategy = 'openlibrary_isbn' | 'openlibrary_title_author'
 
-export interface OpenLibraryResult {
-  google_books_id: string
-  cover_url?: string
-  synopsis?: string
-  publisher?: string
-  isbn?: string
-  page_count?: number
-  published_year?: number
-  strategy: OpenLibraryStrategy
-}
-
 interface OpenLibraryDoc {
   key?: string
+  title?: string
+  author_name?: string[]
+  language?: string[]
   cover_i?: number
   isbn?: string[]
   first_sentence?: string | { value?: string }[]
   number_of_pages_median?: number
   first_publish_year?: number
-  edition_key?: string[]
   publisher?: string[]
 }
 
@@ -39,20 +21,22 @@ interface OpenLibrarySearchResponse {
 }
 
 const API_BASE = 'https://openlibrary.org/search.json'
+const FIELDS =
+  'key,title,author_name,language,cover_i,isbn,first_sentence,number_of_pages_median,first_publish_year,publisher'
 const COVER_BASE = 'https://covers.openlibrary.org/b'
 const OPEN_LIBRARY_USER_AGENT = `${process.env.OPEN_LIBRARY_AGENT_LIB} (${process.env.OPEN_LIBRARY_AGENT_USER})`
 
-const fetchDoc = async (url: string): Promise<OpenLibraryDoc | null> => {
+const fetchDocs = async (url: string): Promise<OpenLibraryDoc[]> => {
   const res = await fetch(url, {
     headers: {
       'User-Agent': OPEN_LIBRARY_USER_AGENT,
     },
   })
 
-  if (!res.ok) return null
+  if (!res.ok) throw new Error(`Open Library ${res.status}`)
 
   const data = (await res.json()) as OpenLibrarySearchResponse
-  return data.numFound && data.docs?.length ? (data.docs[0] ?? null) : null
+  return data.numFound && data.docs?.length ? data.docs : []
 }
 
 const toSynopsis = (firstSentence?: OpenLibraryDoc['first_sentence']): string | undefined => {
@@ -69,54 +53,60 @@ const coverUrlOf = (isbn: string | undefined, coverId: number | undefined): stri
   return undefined
 }
 
-const extractResult = (doc: OpenLibraryDoc, strategy: OpenLibraryStrategy): OpenLibraryResult => {
-  const isbn = doc.isbn?.[0]
-  const openLibraryId = doc.edition_key?.[0] ?? doc.key ?? 'openlibrary:unknown'
+const onlyOne = (values?: string[]) => (values?.length === 1 ? values[0] : undefined)
 
-  const cover_url = coverUrlOf(isbn, doc.cover_i)
+const toCandidate = (doc: OpenLibraryDoc): BookCandidate => {
+  const isbn = onlyOne(doc.isbn)
 
   return {
-    google_books_id: `openlibrary:${openLibraryId}`,
-    cover_url,
+    volume_id: doc.key ?? `openlibrary:${isbn ?? doc.title ?? ''}`,
+    title: doc.title,
+    authors: doc.author_name ?? [],
+    cover_url: coverUrlOf(isbn, doc.cover_i),
     synopsis: toSynopsis(doc.first_sentence),
     publisher: doc.publisher?.[0],
     isbn,
     page_count: doc.number_of_pages_median,
     published_year: doc.first_publish_year,
-    strategy,
+    language: onlyOne(doc.language),
   }
 }
 
-export const fetchOpenLibrary = async (
-  titulo: string,
-  autor: string,
-  isbn?: string,
-): Promise<OpenLibraryResult | null> => {
-  if (isbn) {
-    const cleanIsbn = isbn.replace(/[-\s]/g, '')
+export const searchOpenLibrary = async (
+  title: string,
+  author: string,
+  isbn: string | undefined,
+  limit: number,
+): Promise<CandidateSearch<OpenLibraryStrategy>> => {
+  const strategies: Array<[OpenLibraryStrategy, string]> = [
+    ...(isbn
+      ? [
+          [
+            'openlibrary_isbn',
+            `${API_BASE}?isbn=${encodeURIComponent(isbn.replace(/[-\s]/g, ''))}&limit=${limit}&fields=${FIELDS}`,
+          ] as [OpenLibraryStrategy, string],
+        ]
+      : []),
+    [
+      'openlibrary_title_author',
+      `${API_BASE}?title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&limit=${limit}&fields=${FIELDS}`,
+    ],
+  ]
 
+  let answered = false
+  for (const [strategy, url] of strategies) {
     try {
-      const doc = await fetchDoc(`${API_BASE}?isbn=${encodeURIComponent(cleanIsbn)}&limit=1`)
-      if (doc) {
-        console.log(`[openLibrary] ✅ ISBN match: "${titulo}"`)
-        return extractResult(doc, 'openlibrary_isbn')
+      const docs = await fetchDocs(url)
+      answered = true
+      if (docs.length) {
+        console.log(`[openLibrary] ✅ ${strategy} match: "${title}"`)
+        return { strategy, candidates: docs.map(toCandidate), failed: false }
       }
     } catch (err) {
-      console.warn(`[openLibrary] Falha na busca por ISBN "${isbn}":`, err)
+      console.warn('[openLibrary] Falha na busca (%s) "%s":', strategy, title, err)
     }
   }
 
-  try {
-    const query = `${API_BASE}?title=${encodeURIComponent(titulo)}&author=${encodeURIComponent(autor)}&limit=1`
-    const doc = await fetchDoc(query)
-    if (doc) {
-      console.log(`[openLibrary] ✅ título+autor match: "${titulo}"`)
-      return extractResult(doc, 'openlibrary_title_author')
-    }
-  } catch (err) {
-    console.warn(`[openLibrary] Falha na busca por título+autor "${titulo}":`, err)
-  }
-
-  console.log(`[openLibrary] ⏭️  Sem resultado para "${titulo}" — ${autor}`)
-  return null
+  console.log(`[openLibrary] ⏭️  Sem resultado para "${title}" — ${author}`)
+  return { strategy: null, candidates: [], failed: !answered }
 }

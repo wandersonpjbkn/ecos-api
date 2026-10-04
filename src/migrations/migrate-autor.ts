@@ -1,13 +1,3 @@
-/**
- * Script de migração: autor string → ObjectId
- *
- * Uso:
- *  yarn migrate:autor
- *
- * Seguro para rodar múltiplas vezes — usa upsert e verifica antes de atualizar.
- * Execute APÓS migrate:categorias e APÓS atualizar Book.ts.
- */
-
 import 'dotenv/config'
 import mongoose from 'mongoose'
 
@@ -56,19 +46,19 @@ const run = async () => {
     }
 
     try {
-      const nome = raw.trim()
-      const slug = slugify(nome)
+      const name = raw.trim()
+      const slug = slugify(name)
 
       const doc = await Autor.findOneAndUpdate(
         { slug },
-        { $setOnInsert: { nome, slug, created_by: systemUser._id } },
+        { $setOnInsert: { nome: name, slug, created_by: systemUser._id } },
         { upsert: true, new: true },
       )
 
       await db.collection('books').updateOne({ _id: book._id }, { $set: { autor: doc!._id } })
 
       converted++
-      console.log(`  ✅ "${book.titulo}" → autor: "${nome}" (${doc!._id})`)
+      console.log(`  ✅ "${book.titulo}" → autor: "${name}" (${doc!._id})`)
     } catch (err) {
       errors++
       console.error(`  ❌ "${book.titulo}":`, err)

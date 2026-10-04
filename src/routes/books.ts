@@ -9,18 +9,17 @@ import {
   validateCreateBook,
   validateObjectId,
   validateReplaceBook,
+  validateBookSearch,
   validateUpdateBook,
 } from '@/middleware/validate.js'
 import { Book } from '@/models/Book.js'
 import { ReadingStatus, type ReadingStatusValue } from '@/models/ReadingStatus.js'
 import type { AuthRequest } from '@/types/index.ts'
-import { markBookEdit, PANEL_TRACKED, recordBookEdit } from '@/utils/bookEdit.js'
+import { isbnSourceOf, markBookEdit, PANEL_TRACKED, recordBookEdit } from '@/utils/bookEdit.js'
 import { applyBookPerson, creditablePeople } from '@/utils/bookPerson.js'
-import {
-  fetchEnrichmentPayload,
-  getCoverSourceFromEnrichment,
-} from '@/utils/enrichment.js'
+import { searchCandidates } from '@/utils/enrichment.js'
 import { handleDataError } from '@/utils/httpErrors.js'
+import { publicBook } from '@/utils/publicBook.js'
 
 const normalizeBookInput = (body: Record<string, unknown>): Record<string, unknown> => {
   const normalized = { ...body }
@@ -51,11 +50,11 @@ const normalizeBookInput = (body: Record<string, unknown>): Record<string, unkno
 
 const router = Router()
 
-// ── GET /books — público ──────────────────────────────────────────
+// ── GET /books ──────────────────────────────────────────
 router.get('/', async (_req, res: Response) => {
   try {
     const books = await Book.find()
-      .populate('autor', 'nome slug')
+      .populate('authors', 'nome slug')
       .populate('categoria', 'nome slug')
       .populate('midia', 'nome slug')
       .populate('subgeneros', 'nome slug')
@@ -63,9 +62,8 @@ router.get('/', async (_req, res: Response) => {
       .sort({ added_at: -1 })
       .lean()
 
-    // Any copy may be kept, but is checked first: the ETag turns an unchanged catalog into a 304 with no body.
     res.set('Cache-Control', 'no-cache')
-    res.json(books)
+    res.json(books.map(publicBook))
   } catch (err) {
     console.error('[GET /books]', err)
     handleDataError(res, err, 'Não foi possível carregar os livros. Tente de novo.')
@@ -73,24 +71,54 @@ router.get('/', async (_req, res: Response) => {
 })
 
 // ── GET /books/people ──
-router.get('/people', authenticate, authorize('books', 'create'), async (_req: AuthRequest, res: Response) => {
-  try {
-    res.json(await creditablePeople())
-  } catch (err) {
-    handleDataError(res, err, 'Não foi possível carregar a lista de pessoas. Tente de novo.')
-  }
-})
+router.get(
+  '/people',
+  authenticate,
+  authorize('books', 'create'),
+  async (_req: AuthRequest, res: Response) => {
+    try {
+      res.json(await creditablePeople())
+    } catch (err) {
+      handleDataError(res, err, 'Não foi possível carregar a lista de pessoas. Tente de novo.')
+    }
+  },
+)
 
-// ── GET /books/:id — público ──────────────────────────────────────
+// ── POST /books/enrich/search ─────────────────────────────────────
+router.post(
+  '/enrich/search',
+  authRateLimit,
+  authenticate,
+  enrichmentRateLimit,
+  authorize('books', ['create', 'update']),
+  validateBookSearch,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { title, author, isbn } = req.body as { title: string; author: string; isbn?: string }
+      const found = await searchCandidates(title.trim(), author.trim(), isbn?.trim() || undefined)
+      if (found.failed) {
+        res.status(503).json({
+          error: 'A busca de capa e dados não respondeu. Tente de novo em alguns minutos.',
+        })
+        return
+      }
+      res.json({ source: found.source, candidates: found.candidates })
+    } catch (err) {
+      console.error('[POST /books/enrich/search]', err)
+      handleDataError(res, err, 'Não foi possível buscar agora. Tente de novo.')
+    }
+  },
+)
+
+// ── GET /books/:id ──────────────────────────────────────
 router.get('/:id', validateObjectId('id'), async (req: AuthRequest, res: Response) => {
   try {
     const book = await Book.findById(req.params.id)
-      .populate('autor', 'nome slug')
+      .populate('authors', 'nome slug')
       .populate('categoria', 'nome slug')
       .populate('midia', 'nome slug')
       .populate('subgeneros', 'nome slug')
       .populate('quem_user_id', 'name')
-      .populate('added_by', 'name')
       .lean()
 
     if (!book) {
@@ -98,16 +126,15 @@ router.get('/:id', validateObjectId('id'), async (req: AuthRequest, res: Respons
       return
     }
 
-    res.json(book)
+    res.json(publicBook(book))
   } catch (err) {
     console.error('[GET /books/:id]', err)
     handleDataError(res, err, 'Não foi possível abrir o livro. Tente de novo.')
   }
 })
 
-// ── GET /books/:id/reading — público ─────────────────────────────
+// ── GET /books/:id/reading ─────────────────────────────
 router.get('/:id/reading', validateObjectId('id'), async (req: AuthRequest, res: Response) => {
-  // Only totals: who wants to read or has read a book is private to each person.
   try {
     const totals = await ReadingStatus.aggregate<{ _id: ReadingStatusValue; total: number }>([
       { $match: { book_id: new Types.ObjectId(String(req.params.id)) } },
@@ -133,11 +160,12 @@ router.post(
     try {
       const user = req.user!
       const payload = normalizeBookInput(req.body)
+      payload.isbn_source = payload.isbn ? isbnSourceOf(payload) : undefined
       await applyBookPerson(payload, user)
       const book = await Book.create({ ...payload, added_by: user._id, edit_history: [] })
 
       console.log(`[POST /books] "${book.titulo}" criado por ${req.user!.email}`)
-      res.status(201).json(book)
+      res.status(201).json(publicBook(book.toObject()))
     } catch (err) {
       console.error('[POST /books]', err)
       handleDataError(res, err, 'Não foi possível criar o livro. Tente de novo.')
@@ -169,7 +197,7 @@ router.put(
       markBookEdit(book, payload, marks)
 
       await book.save()
-      res.json(book)
+      res.json(publicBook(book.toObject()))
     } catch (err) {
       console.error('[PUT /books/:id]', err)
       handleDataError(res, err, 'Não foi possível salvar o livro. Tente de novo.')
@@ -203,165 +231,10 @@ router.patch(
       await book.save()
 
       console.log(`[PATCH /books/:id] "${book.titulo}" editado por ${user.email}`)
-      res.json(book)
+      res.json(publicBook(book.toObject()))
     } catch (err) {
       console.error('[PATCH /books/:id]', err)
       handleDataError(res, err, 'Não foi possível salvar o livro. Tente de novo.')
-    }
-  },
-)
-
-// ── POST /books/:id/enrich (preview) ─────────────────────────────
-router.post(
-  '/:id/enrich',
-  authRateLimit,
-  validateObjectId('id'),
-  authenticate,
-  enrichmentRateLimit,
-  authorize('books', 'update'),
-  async (req: AuthRequest, res: Response) => {
-    try {
-      const book = await Book.findById(req.params.id)
-        .populate<{ autor: { nome: string } }>('autor', 'nome')
-        .lean()
-
-      if (!book) {
-        res.status(404).json({ error: 'Não achamos esse livro. Ele pode ter saído do catálogo.' })
-        return
-      }
-
-      const authorName =
-        typeof book.autor === 'object' && book.autor && 'nome' in book.autor
-          ? book.autor.nome
-          : null
-      if (!authorName) {
-        res.status(400).json({ error: 'Falta o autor para procurar.' })
-        return
-      }
-
-      const enrichment = await fetchEnrichmentPayload(book.titulo, authorName, book.isbn)
-      if (!enrichment?.data) {
-        res.status(404).json({ error: 'Não achamos capa nem dados para este livro.' })
-        return
-      }
-
-      res.json({
-        source: enrichment.source,
-        preview: {
-          description: enrichment.data.synopsis,
-          coverUrl: enrichment.data.cover_url,
-          publisher: enrichment.data.publisher,
-          isbn: enrichment.data.isbn,
-          pageCount: enrichment.data.page_count,
-          publishedYear: enrichment.data.published_year,
-          externalId: enrichment.data.google_books_id,
-          strategy: enrichment.data.strategy,
-        },
-      })
-    } catch (err) {
-      console.error('[POST /books/:id/enrich]', err)
-      handleDataError(res, err, 'Não foi possível buscar os dados do livro. Tente de novo.')
-    }
-  },
-)
-
-// ── POST /books/:id/enrich/apply ─────────────────────────────────
-router.post(
-  '/:id/enrich/apply',
-  authRateLimit,
-  validateObjectId('id'),
-  authenticate,
-  enrichmentRateLimit,
-  authorize('books', 'update'),
-  async (req: AuthRequest, res: Response) => {
-    try {
-      const fields = req.body?.fields
-      const allowedFields = [
-        'description',
-        'coverUrl',
-        'publisher',
-        'isbn',
-        'pageCount',
-        'publishedYear',
-      ]
-
-      if (
-        !Array.isArray(fields) ||
-        fields.length === 0 ||
-        fields.some((field) => !allowedFields.includes(field))
-      ) {
-        res.status(400).json({
-          error: 'Marque o que você quer usar no livro.',
-        })
-        return
-      }
-
-      const book = await Book.findById(req.params.id).populate<{ autor: { nome: string } }>(
-        'autor',
-        'nome',
-      )
-      if (!book) {
-        res.status(404).json({ error: 'Não achamos esse livro. Ele pode ter saído do catálogo.' })
-        return
-      }
-
-      if (book.manually_edited_at) {
-        res.status(409).json({
-          error:
-            'Este livro foi corrigido à mão; os dados automáticos não substituem essa correção.',
-        })
-        return
-      }
-
-      const authorName =
-        typeof book.autor === 'object' && book.autor && 'nome' in book.autor
-          ? book.autor.nome
-          : null
-      if (!authorName) {
-        res.status(400).json({ error: 'Falta o autor para procurar.' })
-        return
-      }
-
-      const enrichment = await fetchEnrichmentPayload(book.titulo, authorName, book.isbn)
-      if (!enrichment?.data) {
-        res.status(404).json({ error: 'Não achamos capa nem dados para este livro.' })
-        return
-      }
-
-      const applyMap: Record<string, unknown> = {
-        description: enrichment.data.synopsis,
-        coverUrl: enrichment.data.cover_url,
-        publisher: enrichment.data.publisher,
-        isbn: enrichment.data.isbn,
-        pageCount: enrichment.data.page_count,
-        publishedYear: enrichment.data.published_year,
-      }
-
-      const payload: Record<string, unknown> = {}
-      for (const field of fields) {
-        if (applyMap[field] !== undefined) payload[field] = applyMap[field]
-      }
-
-      const normalizedPayload = normalizeBookInput(payload)
-      Object.assign(book, normalizedPayload)
-      book.google_books_id = enrichment.data.google_books_id
-      book.enriched_at = new Date()
-
-      if (normalizedPayload.cover_url !== undefined) {
-        book.cover_source = getCoverSourceFromEnrichment(enrichment.source)
-      }
-
-      await book.save()
-
-      res.json({
-        message: 'Enriquecimento aplicado com sucesso.',
-        source: enrichment.source,
-        applied_fields: Object.keys(payload),
-        book,
-      })
-    } catch (err) {
-      console.error('[POST /books/:id/enrich/apply]', err)
-      handleDataError(res, err, 'Não foi possível salvar os dados no livro. Tente de novo.')
     }
   },
 )
@@ -381,7 +254,6 @@ router.delete(
         return
       }
 
-      // A deleted book leaves no "Quero ler" / "Lido" pointing at nothing.
       await ReadingStatus.deleteMany({ book_id: book._id })
 
       console.log(`[DELETE /books/:id] "${book.titulo}" removido por ${req.user!.email}`)

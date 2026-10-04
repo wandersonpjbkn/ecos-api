@@ -1,20 +1,3 @@
-/**
- * Script de migração: categoria string → ObjectId
- *
- * O que faz:
- *  1. Lê todos os livros que ainda têm categoria como string
- *  2. Cria (ou encontra) o documento Categoria correspondente
- *  3. Substitui o campo categoria pelo ObjectId no documento Book
- *
- * Uso:
- *  yarn migrate:categorias
- *
- * Seguro para rodar múltiplas vezes — usa upsert e verifica antes de atualizar.
- *
- * Atenção: rode APÓS atualizar o model Book.ts para categoria: ObjectId.
- * O script lida com o período de transição em que o campo pode ser string ou ObjectId.
- */
-
 import 'dotenv/config'
 import mongoose from 'mongoose'
 
@@ -28,15 +11,12 @@ const run = async () => {
 
   await connectDB()
 
-  // Usuário-sistema para created_by das categorias criadas automaticamente
   const systemUser = await User.findOne({ supabase_uid: 'system-migration' })
   if (!systemUser) {
     console.error('❌ Usuário-sistema não encontrado. Execute yarn migrate primeiro.')
     process.exit(1)
   }
 
-  // Lê diretamente da coleção para evitar cast error do Mongoose
-  // (neste momento categoria ainda pode ser string ou ObjectId)
   const db = mongoose.connection.db
   if (!db) {
     console.error('❌ Conexão com banco não disponível.')
@@ -51,39 +31,33 @@ const run = async () => {
   let errors = 0
 
   for (const book of books) {
-    const categoriaRaw = book.categoria
+    const raw = book.categoria
 
-    // Já é ObjectId — não precisa migrar
-    if (categoriaRaw instanceof mongoose.Types.ObjectId) {
+    if (raw instanceof mongoose.Types.ObjectId) {
       skipped++
       continue
     }
 
-    // É string — precisa converter
-    if (typeof categoriaRaw !== 'string' || !categoriaRaw.trim()) {
+    if (typeof raw !== 'string' || !raw.trim()) {
       console.warn(`⚠️  "${book.titulo}" sem categoria válida — ignorado`)
       skipped++
       continue
     }
 
     try {
-      const nome = categoriaRaw.trim()
-      const slug = slugify(nome)
+      const name = raw.trim()
+      const slug = slugify(name)
 
-      // Upsert — cria a categoria se não existir
-      const categoria = await Categoria.findOneAndUpdate(
+      const doc = await Categoria.findOneAndUpdate(
         { slug },
-        { $setOnInsert: { nome, slug, created_by: systemUser._id } },
+        { $setOnInsert: { nome: name, slug, created_by: systemUser._id } },
         { upsert: true, new: true },
       )
 
-      // Atualiza o livro com o ObjectId
-      await db
-        .collection('books')
-        .updateOne({ _id: book._id }, { $set: { categoria: categoria!._id } })
+      await db.collection('books').updateOne({ _id: book._id }, { $set: { categoria: doc!._id } })
 
       converted++
-      console.log(`✅ "${book.titulo}" → categoria "${nome}" (${categoria!._id})`)
+      console.log(`✅ "${book.titulo}" → categoria "${name}" (${doc!._id})`)
     } catch (err) {
       errors++
       console.error(`❌ "${book.titulo}":`, err)

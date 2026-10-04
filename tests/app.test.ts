@@ -5,7 +5,6 @@ import app from '@/app.js'
 
 const GLOBAL_LIMIT = 300
 
-// What Render hands the app: the client, then Cloudflare, then its own load balancer.
 const renderChain = (client: string) => `${client}, 162.158.0.1, 10.0.0.1`
 
 const exhaust = async (forwardedFor: (i: number) => string) => {
@@ -29,13 +28,17 @@ describe('app', () => {
   it('keeps two clients behind the same load balancer on separate counts', async () => {
     await exhaust(() => renderChain('203.0.113.53'))
 
-    const res = await request(app).get('/no-such-route').set('X-Forwarded-For', renderChain('203.0.113.54'))
+    const res = await request(app)
+      .get('/no-such-route')
+      .set('X-Forwarded-For', renderChain('203.0.113.54'))
 
     expect(res.status).toBe(404)
   })
 
   it('answers a request under the limit normally', async () => {
-    const res = await request(app).get('/no-such-route').set('X-Forwarded-For', renderChain('203.0.113.51'))
+    const res = await request(app)
+      .get('/no-such-route')
+      .set('X-Forwarded-For', renderChain('203.0.113.51'))
 
     expect(res.status).toBe(404)
   })

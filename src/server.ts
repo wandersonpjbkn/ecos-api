@@ -2,12 +2,18 @@ import 'dotenv/config'
 
 import app, { allowedOrigins } from '@/app.js'
 import { connectDB } from '@/config/db.js'
+import { migrateBookAuthors } from '@/migrations/book-authors.js'
+import { removeBookGoogleId } from '@/migrations/book-google-id.js'
+import { removeBulkSearchMarks } from '@/migrations/book-search-marks.js'
 import { seedPermissions } from '@/utils/seed.js'
 
 // ── Startup ───────────────────────────────────────────────────────
 const start = async () => {
   await connectDB()
   await seedPermissions()
+  await migrateBookAuthors()
+  await removeBookGoogleId()
+  await removeBulkSearchMarks()
 
   const PORT = Number(process.env.API_PORT ?? 3000)
   const HOST = process.env.API_LOCALHOST

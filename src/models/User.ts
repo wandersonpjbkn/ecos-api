@@ -19,7 +19,6 @@ const UserSchema = new Schema<IUser>(
     name: { type: String, required: true },
     hidden_midias: { type: [String], default: undefined },
     role: { type: String, enum: ['admin', 'editor', 'viewer'], default: 'viewer' },
-    // Suspended: every request is refused, and Supabase refuses signing in and renewing (utils/supabaseAdmin.ts).
     status: { type: String, enum: ['active', 'suspended'], default: 'active' },
     last_seen_at: { type: Date, default: Date.now },
   },

@@ -11,7 +11,6 @@ import { handleDataError } from '@/utils/httpErrors.js'
 const isReadingStatus = (value: unknown): value is ReadingStatusValue =>
   typeof value === 'string' && (READING_STATUSES as readonly string[]).includes(value)
 
-// Mounted under /users/me/reading, after the users router authenticates.
 const router = Router()
 
 // ── GET /users/me/reading ────────────────────────────────────────
@@ -51,7 +50,6 @@ router.put(
       const entry = await ReadingStatus.findOneAndUpdate(
         { user_id: req.user!._id, book_id: req.params.bookId },
         { status, updated_at: new Date() },
-        // runValidators: updates skip the schema enum unless asked.
         {
           upsert: true,
           new: true,

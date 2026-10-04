@@ -1,23 +1,3 @@
-/**
- * Script de migração: CSV → MongoDB
- *
- * O que faz:
- *  1. Conecta ao MongoDB e cria permissões padrão (seed)
- *  2. Cria um usuário-sistema para o added_by dos livros migrados
- *  3. Cria os sub-gêneros únicos do CSV
- *  4. Cria (ou encontra) documentos Autor, Midia e Categoria para cada valor único
- *  5. Importa os livros com os ObjectIds corretos para todos os campos ref
- *
- * Uso:
- *  yarn migrate:csv
- *
- * Seguro para rodar múltiplas vezes — usa upsert em tudo.
- *
- * Nota: este script já resolve autor, midia e categoria como ObjectIds.
- * NÃO é necessário rodar migrate:categorias, migrate:autor ou migrate:midia
- * após este script em um banco limpo.
- */
-
 import 'dotenv/config'
 import { createReadStream } from 'fs'
 import { dirname, resolve } from 'path'
@@ -59,16 +39,15 @@ const SYSTEM_USER = {
 
 // ── Helpers ───────────────────────────────────────────────────────
 
-/** Upsert genérico para entidades com nome+slug+created_by */
 const upsertNamed = async (
   Model: typeof Autor | typeof Midia | typeof Categoria,
-  nome: string,
+  name: string,
   createdBy: mongoose.Types.ObjectId,
 ): Promise<mongoose.Types.ObjectId> => {
-  const slug = slugify(nome)
+  const slug = slugify(name)
   const doc = await (Model as typeof Autor).findOneAndUpdate(
     { slug },
-    { $setOnInsert: { nome, slug, created_by: createdBy } },
+    { $setOnInsert: { nome: name, slug, created_by: createdBy } },
     { upsert: true, new: true },
   )
   return doc!._id
@@ -88,16 +67,16 @@ const parseCSV = (filePath: string): Promise<CsvRow[]> =>
         }
         lineIndex++
 
-        const titulo = row[1]?.trim()
-        const autor = row[2]?.trim()
-        const midia = row[3]?.trim()
+        const title = row[1]?.trim()
+        const author = row[2]?.trim()
+        const format = row[3]?.trim()
 
-        if (!titulo || !autor || !midia) return
+        if (!title || !author || !format) return
 
         rows.push({
-          titulo,
-          autor,
-          midia,
+          titulo: title,
+          autor: author,
+          midia: format,
           categoria: row[4]?.trim() ?? '',
           subgeneros: (row[5] ?? '')
             .split(',')
@@ -111,7 +90,7 @@ const parseCSV = (filePath: string): Promise<CsvRow[]> =>
       .on('error', reject)
   })
 
-// ── Migração ──────────────────────────────────────────────────────
+// ── Migration ──────────────────────────────────────────────────────
 
 const run = async () => {
   console.log('🚀 Iniciando migração CSV → MongoDB...\n')
@@ -119,7 +98,6 @@ const run = async () => {
   await connectDB()
   await seedPermissions()
 
-  // ── 1. Usuário-sistema ─────────────────────────────────────────
   console.log('👤 Criando usuário-sistema...')
   const systemUser = await User.findOneAndUpdate(
     { supabase_uid: SYSTEM_USER.supabase_uid },
@@ -128,7 +106,6 @@ const run = async () => {
   )
   console.log(`   ✅ ${systemUser.email} (${systemUser._id})\n`)
 
-  // ── 2. Parsear CSV ─────────────────────────────────────────────
   console.log(`📄 Lendo CSV: ${CSV_PATH}`)
   let rows: CsvRow[]
   try {
@@ -139,57 +116,54 @@ const run = async () => {
   }
   console.log(`   ✅ ${rows.length} livros encontrados\n`)
 
-  // ── 3. Sub-gêneros ─────────────────────────────────────────────
   console.log('🏷️  Criando sub-gêneros...')
-  const allSubgeneroNames = [...new Set(rows.flatMap((r) => r.subgeneros))]
+  const allSubgenreNames = [...new Set(rows.flatMap((r) => r.subgeneros))]
   let subCreated = 0,
     subSkipped = 0
 
-  for (const subLower of allSubgeneroNames) {
+  for (const subLower of allSubgenreNames) {
     const slug = slugify(subLower)
-    const nome = subLower.replace(/\b\w/g, (c) => c.toUpperCase())
+    const name = subLower.replace(/\b\w/g, (c) => c.toUpperCase())
     const result = await Subgenero.updateOne(
       { slug },
-      { $setOnInsert: { nome, slug, created_by: systemUser._id } },
+      { $setOnInsert: { nome: name, slug, created_by: systemUser._id } },
       { upsert: true },
     )
     if (result.upsertedCount > 0) subCreated++
     else subSkipped++
   }
 
-  const subgenerosMap = new Map<string, mongoose.Types.ObjectId>()
+  const subgenreMap = new Map<string, mongoose.Types.ObjectId>()
   for (const doc of await Subgenero.find().select('slug _id').lean()) {
-    subgenerosMap.set(doc.slug, doc._id)
+    subgenreMap.set(doc.slug, doc._id)
   }
   console.log(`   ✅ ${subCreated} criados, ${subSkipped} já existiam\n`)
 
-  // ── 4. Autores, Mídias, Categorias ────────────────────────────
   console.log('👤 Criando autores, mídias e categorias...')
 
-  const autorMap = new Map<string, mongoose.Types.ObjectId>()
-  const midiaMap = new Map<string, mongoose.Types.ObjectId>()
-  const categoriaMap = new Map<string, mongoose.Types.ObjectId>()
+  const authorMap = new Map<string, mongoose.Types.ObjectId>()
+  const formatMap = new Map<string, mongoose.Types.ObjectId>()
+  const genreMap = new Map<string, mongoose.Types.ObjectId>()
 
-  const uniqueAutores = [...new Set(rows.map((r) => r.autor).filter(Boolean))]
-  const uniqueMidias = [...new Set(rows.map((r) => r.midia).filter(Boolean))]
-  const uniqueCategorias = [...new Set(rows.map((r) => r.categoria).filter(Boolean))]
+  const uniqueAuthors = [...new Set(rows.map((r) => r.autor).filter(Boolean))]
+  const uniqueFormats = [...new Set(rows.map((r) => r.midia).filter(Boolean))]
+  const uniqueGenres = [...new Set(rows.map((r) => r.categoria).filter(Boolean))]
 
-  for (const nome of uniqueAutores) {
-    autorMap.set(nome, await upsertNamed(Autor, nome, systemUser._id))
+  for (const name of uniqueAuthors) {
+    authorMap.set(name, await upsertNamed(Autor, name, systemUser._id))
   }
-  for (const nome of uniqueMidias) {
-    midiaMap.set(nome, await upsertNamed(Midia, nome, systemUser._id))
+  for (const name of uniqueFormats) {
+    formatMap.set(name, await upsertNamed(Midia, name, systemUser._id))
   }
-  for (const nome of uniqueCategorias) {
-    categoriaMap.set(nome, await upsertNamed(Categoria, nome, systemUser._id))
+  for (const name of uniqueGenres) {
+    genreMap.set(name, await upsertNamed(Categoria, name, systemUser._id))
   }
 
   console.log(
-    `   ✅ ${uniqueAutores.length} autores, ${uniqueMidias.length} mídias,` +
-      ` ${uniqueCategorias.length} categorias\n`,
+    `   ✅ ${uniqueAuthors.length} autores, ${uniqueFormats.length} mídias,` +
+      ` ${uniqueGenres.length} categorias\n`,
   )
 
-  // ── 5. Livros ──────────────────────────────────────────────────
   console.log('📚 Importando livros...')
   let bookCreated = 0,
     bookSkipped = 0
@@ -197,34 +171,34 @@ const run = async () => {
 
   for (const row of rows) {
     try {
-      const autorId = autorMap.get(row.autor)
-      const midiaId = midiaMap.get(row.midia)
-      const categoriaId = categoriaMap.get(row.categoria)
+      const authorId = authorMap.get(row.autor)
+      const formatId = formatMap.get(row.midia)
+      const genreId = genreMap.get(row.categoria)
 
-      if (!autorId || !midiaId || !categoriaId) {
+      if (!authorId || !formatId || !genreId) {
         const missing = [
-          !autorId && `autor="${row.autor}"`,
-          !midiaId && `midia="${row.midia}"`,
-          !categoriaId && `categoria="${row.categoria}"`,
+          !authorId && `autor="${row.autor}"`,
+          !formatId && `midia="${row.midia}"`,
+          !genreId && `categoria="${row.categoria}"`,
         ]
           .filter(Boolean)
           .join(', ')
         throw new Error(`ObjectId não resolvido para: ${missing}`)
       }
 
-      const subgenerosIds = row.subgeneros
-        .map((s) => subgenerosMap.get(slugify(s)))
+      const subgenreIds = row.subgeneros
+        .map((s) => subgenreMap.get(slugify(s)))
         .filter((id): id is mongoose.Types.ObjectId => id !== undefined)
 
       const result = await Book.updateOne(
-        { titulo: row.titulo, autor: autorId },
+        { titulo: row.titulo, authors: authorId },
         {
           $setOnInsert: {
             titulo: row.titulo,
-            autor: autorId,
-            midia: midiaId,
-            categoria: categoriaId,
-            subgeneros: subgenerosIds,
+            authors: [authorId],
+            midia: formatId,
+            categoria: genreId,
+            subgeneros: subgenreIds,
             quem_nome: row.quem_nome,
             porque: row.porque,
             added_by: systemUser._id,
@@ -248,13 +222,13 @@ const run = async () => {
     }
   }
 
-  // ── Resumo ─────────────────────────────────────────────────────
+  // ── Summary ─────────────────────────────────────────────────────
   console.log('\n─────────────────────────────────────')
   console.log('📊 Resumo da migração:')
   console.log(`   Sub-gêneros → ${subCreated} criados, ${subSkipped} já existiam`)
-  console.log(`   Autores     → ${uniqueAutores.length} processados`)
-  console.log(`   Mídias      → ${uniqueMidias.length} processadas`)
-  console.log(`   Categorias  → ${uniqueCategorias.length} processadas`)
+  console.log(`   Autores     → ${uniqueAuthors.length} processados`)
+  console.log(`   Mídias      → ${uniqueFormats.length} processadas`)
+  console.log(`   Categorias  → ${uniqueGenres.length} processadas`)
   console.log(`   Livros      → ${bookCreated} criados, ${bookSkipped} já existiam`)
 
   if (errors.length > 0) {

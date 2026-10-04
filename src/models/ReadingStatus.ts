@@ -23,7 +23,6 @@ const ReadingStatusSchema = new Schema<IReadingStatus>(
   },
 )
 
-// One status per person and book: marking a book as read takes it out of "Quero ler".
 ReadingStatusSchema.index({ user_id: 1, book_id: 1 }, { unique: true })
 ReadingStatusSchema.index({ book_id: 1, status: 1 })
 

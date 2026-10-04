@@ -12,7 +12,7 @@ const client = jwksClient({
   jwksUri: `${process.env.SUPABASE_URL}/auth/v1/.well-known/jwks.json`,
   cache: true,
   cacheMaxEntries: 5,
-  cacheMaxAge: 10 * 60 * 1000, // 10 min
+  cacheMaxAge: 10 * 60 * 1000,
 })
 
 const getSigningKey = (kid: string): Promise<string> =>
@@ -58,7 +58,6 @@ export const authenticate = async (
       audience: 'authenticated',
       issuer: `${process.env.SUPABASE_URL}/auth/v1`,
     }) as SupabaseJwtPayload
-    // Every account here signs in by e-mail: a token without one (anonymous sign-in) is not a member.
     if (!payload.email) throw new Error('Token sem e-mail')
   } catch (err) {
     console.error('[authenticate] Falha na verificação do token:', err)
@@ -76,13 +75,11 @@ export const authenticate = async (
     )
 
     if (!user) {
-      // A removed account's token stays valid for up to 1 h: it must not bring the account back as a Visitante.
       if (!(await supabaseAccountExists(payload.sub))) {
         res.status(401).json({ error: 'Sua sessão venceu. Entre de novo.' })
         return
       }
 
-      // Atomic: a first access sends two verifies together; find-then-create would collide on the unique index.
       const result = await User.findOneAndUpdate(
         { supabase_uid: payload.sub },
         {

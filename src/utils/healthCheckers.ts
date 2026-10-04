@@ -5,13 +5,6 @@ interface SupabaseTokenResponse {
 
 const SUPABASE_HEALTH_TIMEOUT_MS = 5_000
 
-/**
- * Simulates a real user session against Supabase Auth using a dedicated
- * keep-alive user. The full flow (sign in → refresh → logout) registers
- * meaningful activity on auth.sessions, auth.refresh_tokens and auth.users
- * to prevent the free tier 7-day inactivity auto-pause, and surfaces three
- * distinct events in the Supabase auth logs.
- */
 export const checkSupabaseAuth = async (): Promise<void> => {
   const url = process.env.SUPABASE_URL
   const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY
@@ -31,7 +24,6 @@ export const checkSupabaseAuth = async (): Promise<void> => {
   }
 
   try {
-    // Step 1: password sign in — inserts session + refresh token rows
     const signInRes = await fetch(`${url}/auth/v1/token?grant_type=password`, {
       method: 'POST',
       headers: baseHeaders,
@@ -43,7 +35,6 @@ export const checkSupabaseAuth = async (): Promise<void> => {
     }
     const session = (await signInRes.json()) as SupabaseTokenResponse
 
-    // Step 2: token refresh — mirrors the most common real-user activity
     const refreshRes = await fetch(`${url}/auth/v1/token?grant_type=refresh_token`, {
       method: 'POST',
       headers: baseHeaders,
@@ -55,7 +46,6 @@ export const checkSupabaseAuth = async (): Promise<void> => {
     }
     const refreshed = (await refreshRes.json()) as SupabaseTokenResponse
 
-    // Step 3: logout — removes the session row, keeps auth tables tidy
     const logoutRes = await fetch(`${url}/auth/v1/logout`, {
       method: 'POST',
       headers: { ...baseHeaders, Authorization: `Bearer ${refreshed.access_token}` },

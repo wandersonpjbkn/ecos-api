@@ -4,15 +4,8 @@ import { Permission } from '@/models/Permission.js'
 import type { AuthRequest, Resource, Action } from '@/types/index.ts'
 import { handleDataError } from '@/utils/httpErrors.js'
 
-/**
- * Fábrica de middleware de autorização.
- * Uso: authorize('books', 'update')
- *
- * Busca as permissões do role do usuário autenticado no banco
- * e verifica se a action solicitada está permitida.
- */
 export const authorize =
-  (resource: Resource, action: Action) =>
+  (resource: Resource, action: Action | Action[]) =>
   async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     const user = req.user
 
@@ -24,7 +17,8 @@ export const authorize =
     try {
       const permission = await Permission.findOne({ role: user.role, resource })
 
-      if (!permission || !permission.actions.includes(action)) {
+      const accepted = Array.isArray(action) ? action : [action]
+      if (!permission || !accepted.some((one) => permission.actions.includes(one))) {
         res.status(403).json({
           error: 'Você não tem permissão para isso.',
         })

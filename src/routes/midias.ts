@@ -16,8 +16,8 @@ router.use(authenticate)
 // ── GET /midias ───────────────────────────────────────────────────
 router.get('/', authorize('midias', 'read'), async (_req, res: Response) => {
   try {
-    const midias = await Midia.find().sort({ nome: 1 }).lean()
-    res.json(midias)
+    const formats = await Midia.find().sort({ nome: 1 }).lean()
+    res.json(formats)
   } catch (err) {
     console.error('[GET /midias]', err)
     handleDataError(res, err, 'Não foi possível carregar os formatos. Tente de novo.')
@@ -31,8 +31,8 @@ router.post(
   validateCreateNamed,
   async (req: AuthRequest, res: Response) => {
     try {
-      const nome = req.body.nome.trim()
-      const slug = slugify(nome)
+      const name = req.body.nome.trim()
+      const slug = slugify(name)
 
       const exists = await Midia.findOne({ slug })
       if (exists) {
@@ -40,10 +40,10 @@ router.post(
         return
       }
 
-      const midia = await Midia.create({ nome, slug, created_by: req.user!._id })
+      const format = await Midia.create({ nome: name, slug, created_by: req.user!._id })
 
-      console.log(`[POST /midias] "${midia.nome}" criada por ${req.user!.email}`)
-      res.status(201).json(midia)
+      console.log(`[POST /midias] "${format.nome}" criada por ${req.user!.email}`)
+      res.status(201).json(format)
     } catch (err) {
       console.error('[POST /midias]', err)
       handleDataError(res, err, 'Não foi possível criar o formato. Tente de novo.')
@@ -59,8 +59,8 @@ router.patch(
   validateCreateNamed,
   async (req: AuthRequest, res: Response) => {
     try {
-      const nome = req.body.nome.trim()
-      const slug = slugify(nome)
+      const name = req.body.nome.trim()
+      const slug = slugify(name)
 
       const conflict = await Midia.findOne({ slug, _id: { $ne: req.params.id } })
       if (conflict) {
@@ -68,14 +68,18 @@ router.patch(
         return
       }
 
-      const midia = await Midia.findByIdAndUpdate(req.params.id, { nome, slug }, { new: true })
-      if (!midia) {
+      const format = await Midia.findByIdAndUpdate(
+        req.params.id,
+        { nome: name, slug },
+        { new: true },
+      )
+      if (!format) {
         res.status(404).json({ error: 'Não achamos esse formato.' })
         return
       }
 
-      console.log(`[PATCH /midias/:id] "${midia.nome}" atualizada por ${req.user!.email}`)
-      res.json(midia)
+      console.log(`[PATCH /midias/:id] "${format.nome}" atualizada por ${req.user!.email}`)
+      res.json(format)
     } catch (err) {
       console.error('[PATCH /midias/:id]', err)
       handleDataError(res, err, 'Não foi possível salvar o formato. Tente de novo.')
@@ -99,13 +103,13 @@ router.delete(
         return
       }
 
-      const midia = await Midia.findByIdAndDelete(req.params.id)
-      if (!midia) {
+      const format = await Midia.findByIdAndDelete(req.params.id)
+      if (!format) {
         res.status(404).json({ error: 'Não achamos esse formato.' })
         return
       }
 
-      console.log(`[DELETE /midias/:id] "${midia.nome}" removida por ${req.user!.email}`)
+      console.log(`[DELETE /midias/:id] "${format.nome}" removida por ${req.user!.email}`)
       res.status(204).send()
     } catch (err) {
       console.error('[DELETE /midias/:id]', err)
