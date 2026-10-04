@@ -93,7 +93,7 @@ export const searchGoogleBooks = async (
         return { strategy, candidates: volumes.map(toCandidate), failed: false }
       }
     } catch (err) {
-      console.warn(`[googleBooks] Falha na busca (${strategy}) "${title}":`, err)
+      console.warn('[googleBooks] Falha na busca (%s) "%s":', strategy, title, err)
     }
   }
 
